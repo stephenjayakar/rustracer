@@ -1,4 +1,4 @@
-extern crate sdl2; 
+extern crate sdl2;
 
 use sdl2::pixels::Color;
 use sdl2::event::Event;
@@ -27,31 +27,32 @@ impl Object for Sphere {
 	let (mut t0, mut t1) = (0.0, 0.0);
 	let L = Vector::points_to_vector(&ray.origin, &self.center);
 	let tca = L.dot(&ray.direction);
+	// TODO: what's this for?
         // if (tca < 0) return false;
-        let d2: f64 = L.dot(&L) - tca * tca; 
+        let d2: f64 = L.dot(&L) - tca * tca;
         if d2 > radius2 {
 	    return false;
 	}
-        let thc: f64 = f64::sqrt(radius2 - d2); 
-        t0 = tca - thc; 
+        let thc: f64 = f64::sqrt(radius2 - d2);
+        t0 = tca - thc;
         t1 = tca + thc;
         if t0 > t1 {
 	    let temp: f64 = t0;
 	    t0 = t1;
 	    t1 = temp;
 	}
- 
-        if t0 < 0.0 { 
-            t0 = t1; // if t0 is negative, let's use t1 instead 
+
+        if t0 < 0.0 {
+            t0 = t1; // if t0 is negative, let's use t1 instead
             if t0 < 0.0 {
 		return false; // both t0 and t1 are negative
 	    }
-        } 
+        }
 
 	// TODO: use this to actually calculate distance to sphere
-        // t = t0; 
- 
-        return true; 
+        // t = t0;
+
+        return true;
     }
 }
 
@@ -82,35 +83,27 @@ impl Vector {
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
- 
+
     let window = video_subsystem.window("rustracer", 800, 800)
         .position_centered()
         .build()
         .unwrap();
- 
+
     let mut canvas = window.into_canvas().build().unwrap();
- 
+
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut i = 0;
     'running: loop {
-        i = (i + 1) % 255;
-        canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
-        canvas.clear();
-        for event in event_pump.poll_iter() {
+	for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+		Event::Quit {..} |
+		Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
-                },
-                _ => {}
+		},
+		_ => {}
             }
-        }
-        // The rest of the game loop goes here...
-
-        canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+	}
     }
 }
