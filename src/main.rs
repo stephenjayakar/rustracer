@@ -3,7 +3,25 @@ extern crate sdl2;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+
 use std::time::Duration;
+use std::vec::Vec;
+
+struct Config {
+    screen_width: u32,
+    screen_height: u32,
+}
+
+struct Scene {
+    objects: Vec<Box<Object>>,
+}
+
+struct Camera {
+    // for now, direction is assumed to be -z
+    // direction: Vector,
+    fov: f64,
+    position: Point,
+}
 
 trait Object {
     fn intersect(&self, ray: Ray) -> bool;
@@ -27,8 +45,6 @@ impl Object for Sphere {
 	let (mut t0, mut t1) = (0.0, 0.0);
 	let L = Vector::points_to_vector(&ray.origin, &self.center);
 	let tca = L.dot(&ray.direction);
-	// TODO: what's this for?
-        // if (tca < 0) return false;
         let d2: f64 = L.dot(&L) - tca * tca;
         if d2 > radius2 {
 	    return false;
@@ -80,7 +96,16 @@ impl Vector {
     }
 }
 
-pub fn main() {
+// convert pixel coordinates to direction vector
+fn px_coords_to_direction(x: u32,
+			  y: u32,
+			  config: &Config,
+			  camera: &Camera) {
+    let z_vec = -1.0;
+    
+}
+
+fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -94,16 +119,17 @@ pub fn main() {
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
+    
     let mut event_pump = sdl_context.event_pump().unwrap();
     'running: loop {
-	for event in event_pump.poll_iter() {
+    	for event in event_pump.poll_iter() {
             match event {
-		Event::Quit {..} |
-		Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+    		Event::Quit {..} |
+    		Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
-		},
-		_ => {}
+    		},
+    		_ => {}
             }
-	}
+    	}
     }
 }
