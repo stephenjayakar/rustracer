@@ -1,8 +1,19 @@
-pub struct Ray {
-    pub origin: Point,
-    pub direction: Vector,
+#[derive(Debug)]
+pub struct Ray<'a> {
+    pub origin: &'a Point,
+    pub direction: &'a Vector,
 }
 
+impl<'a> Ray<'a> {
+    pub fn new(origin: &'a Point, direction: &'a Vector) -> Ray<'a> {
+	Ray {
+	    origin: origin,
+	    direction: direction,
+	}
+    }
+}
+
+#[derive(Debug)]
 pub struct Point {
     pub x: f64,
     pub y: f64,

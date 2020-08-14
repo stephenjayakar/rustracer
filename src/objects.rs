@@ -1,7 +1,7 @@
 use crate::primitives::{Point, Vector, Ray};
 
 pub trait Object {
-    fn intersect(&self, ray: Ray) -> bool;
+    fn intersect(&self, ray: &Ray) -> bool;
 }
 
 pub struct Sphere {
@@ -11,7 +11,7 @@ pub struct Sphere {
 
 impl Object for Sphere {
     // sphere intersection from scratchapixel
-    fn intersect(&self, ray: Ray) -> bool {
+    fn intersect(&self, ray: &Ray) -> bool {
 	let radius2 = self.radius.powi(2);
 	let (mut t0, mut t1) = (0.0, 0.0);
 	let L = Vector::points_to_vector(&ray.origin, &self.center);

@@ -7,13 +7,14 @@ use sdl2::keyboard::Keycode;
 mod primitives;
 mod objects;
 
-use primitives::Point;
+use primitives::{Point, Ray, Vector};
 use objects::{Object, Sphere};
 
 struct Config {
     screen_width: u32,
     screen_height: u32,
-    fov: f64
+    fov: f64,
+    origin: Point,
 }
 
 impl Config {
@@ -22,7 +23,8 @@ impl Config {
 	Config {
 	    screen_width: width,
 	    screen_height: height,
-	    fov: f64::to_radians(fov_degrees)
+	    fov: f64::to_radians(fov_degrees),
+	    origin: Point::new(0.0, 0.0, 0.0),
 	}
     }
 }
@@ -35,7 +37,7 @@ impl Scene {
     // TODO: don't hardcode scene in here
     fn new() -> Scene {
 	let sphere = Sphere {
-	    center: Point::new(0.0, 0.0, 3.0),
+	    center: Point::new(0.0, 0.0, 10.0),
 	    radius: 1.0,
 	};
 	let boxed_sphere = Box::new(sphere);
@@ -56,10 +58,19 @@ fn cast_rays(config: &Config, scene: &Scene) {
     let y_step = y_width / (config.screen_height as f64);
     let y_start = -y_width / 2.0;
 
-    // println!("total x width: {}", x_width);
-    // for i in 0..config.screen_width {
-    // 	println!("step {}", x_start + x_step * (i as f64));
-    // }
+    for i in 0..config.screen_width {
+	for j in 0..config.screen_height {
+	    let x_component = x_start + x_step * (i as f64);
+	    let y_component = y_start + y_step * (j as f64);
+	    let vector = Vector::new(x_component, y_component, -1.0);
+	    let ray = Ray::new(&config.origin, &vector);
+	    for object in scene.objects.iter() {
+		if object.intersect(&ray) {
+		    println!("{:#?}", ray);
+		}
+	    }
+	}
+    }
 }
 
 fn init_with_config(config: &Config) -> (sdl2::render::Canvas<sdl2::video::Window>, sdl2::EventPump) {
