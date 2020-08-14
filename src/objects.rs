@@ -1,12 +1,12 @@
 use crate::primitives::{Point, Vector, Ray};
 
-trait Object {
+pub trait Object {
     fn intersect(&self, ray: Ray) -> bool;
 }
 
-struct Sphere {
-    center: Point,
-    radius: f64,
+pub struct Sphere {
+    pub center: Point,
+    pub radius: f64,
 }
 
 impl Object for Sphere {
