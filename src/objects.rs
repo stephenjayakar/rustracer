@@ -9,36 +9,39 @@ pub struct Sphere {
     pub radius: f64,
 }
 
+impl Sphere {
+    fn new(center: Point, radius: f64) -> Sphere {
+	Sphere {
+	    center: center,
+	    radius: radius,
+	}
+    }
+}
+
 impl Object for Sphere {
-    // sphere intersection from scratchapixel
+    // sphere intersection from bheisler
     fn intersect(&self, ray: &Ray) -> bool {
-	let radius2 = self.radius.powi(2);
-	let (mut t0, mut t1) = (0.0, 0.0);
-	let L = Vector::points_to_vector(&ray.origin, &self.center);
-	let tca = L.dot(&ray.direction);
-        let d2: f64 = L.dot(&L) - tca * tca;
-        if d2 > radius2 {
-	    return false;
-	}
-        let thc: f64 = f64::sqrt(radius2 - d2);
-        t0 = tca - thc;
-        t1 = tca + thc;
-        if t0 > t1 {
-	    let temp: f64 = t0;
-	    t0 = t1;
-	    t1 = temp;
-	}
+	//Create a line segment between the ray origin and the center of the sphere
+        let l: Vector = self.center.sub_vector(ray.origin);
+        //Use l as a hypotenuse and find the length of the adjacent side
+        let adj2 = l.dot(&ray.direction);
+        //Find the length-squared of the opposite side
+        //This is equivalent to (but faster than) (l.length() * l.length()) - (adj2 * adj2)
+        let d2 = l.dot(&l) - (adj2 * adj2);
+        //If that length-squared is less than radius squared, the ray intersects the sphere
+        d2 < (self.radius * self.radius)
+    }
+}
 
-        if t0 < 0.0 {
-            t0 = t1; // if t0 is negative, let's use t1 instead
-            if t0 < 0.0 {
-		return false; // both t0 and t1 are negative
-	    }
-        }
-
-	// TODO: use this to actually calculate distance to sphere
-        // t = t0;
-
-        return true;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn sphere_intersection() {
+	let origin = Point::new(0.0, 0.0, 0.0);
+	let direction = Vector::new(0.0, 0.0, -1.0);
+	let ray = Ray::new(&origin, &direction);
+	let sphere = Sphere::new(Point::new(0.0, -4.0, 0.0), 2.0);
+	assert!(sphere.intersect(&ray));
     }
 }

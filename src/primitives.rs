@@ -46,4 +46,21 @@ impl Vector {
 	    self.y * other_vector.y +
 	    self.z * other_vector.z
     }
+
+    pub fn add_vector(&self, other_vector: &Vector) -> Vector {
+	Vector {
+	    x: self.x + other_vector.x,
+	    y: self.y + other_vector.y,
+	    z: self.z + other_vector.z,
+	}
+    }
+
+    pub fn sub_vector(&self, other_vector: &Vector) -> Vector {
+	Vector {
+	    x: self.x - other_vector.x,
+	    y: self.y - other_vector.y,
+	    z: self.z - other_vector.z,
+	}
+    }
+
 }

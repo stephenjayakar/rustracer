@@ -88,7 +88,7 @@ fn init_with_config(config: &Config) -> (sdl2::render::Canvas<sdl2::video::Windo
     canvas.clear();
     canvas.present();
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let event_pump = sdl_context.event_pump().unwrap();
     (canvas, event_pump)
 }
 
