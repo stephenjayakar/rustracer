@@ -58,7 +58,9 @@ struct MyCanvas {
 }
 
 impl MyCanvas {
-    fn draw_pixel(&mut self, x: u32, y: u32) {
+    // what the fuck is d
+    fn draw_pixel(&mut self, x: u32, y: u32, c: Color) {
+	self.canvas.set_draw_color(c);
 	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 2, 2));
 	self.canvas.present();
     }
@@ -112,10 +114,10 @@ fn main() {
 			    let vector = Vector::new_normalized(x_component, y_component, -1.0);
 			    let ray = Ray::new(&config.origin, &vector);
 			    for object in scene.objects.iter() {
-				if object.intersect(&ray) {
+				if let Some(d) = object.intersect(&ray) {
 				    temp += 1;
 				    // println!("ping {} {} {}", temp, i, j);
-				    my_canvas.draw_pixel(i, j);
+				    my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
 				}
 			    }
 			}

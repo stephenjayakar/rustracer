@@ -1,7 +1,7 @@
 use crate::primitives::{Point, Vector, Ray};
 
 pub trait Object {
-    fn intersect(&self, ray: &Ray) -> bool;
+    fn intersect(&self, ray: &Ray) -> Option<f64>;
 }
 
 pub struct Sphere {
@@ -20,7 +20,7 @@ impl Sphere {
 
 impl Object for Sphere {
     // sphere intersection from bheisler
-    fn intersect(&self, ray: &Ray) -> bool {
+    fn intersect(&self, ray: &Ray) -> Option<f64> {
 	//Create a line segment between the ray origin and the center of the sphere
         let l: Vector = self.center.sub_vector(ray.origin);
         //Use l as a hypotenuse and find the length of the adjacent side
@@ -29,7 +29,11 @@ impl Object for Sphere {
         //This is equivalent to (but faster than) (l.length() * l.length()) - (adj2 * adj2)
         let d2 = l.dot(&l) - (adj2 * adj2);
         //If that length-squared is less than radius squared, the ray intersects the sphere
-        d2 < (self.radius * self.radius)
+        if d2 < (self.radius * self.radius) {
+	    Some(d2)
+	} else {
+	    None
+	}
     }
 }
 
@@ -42,10 +46,10 @@ mod tests {
 	let direction = Vector::new_normalized(0.0, 0.0, -1.0);
 	let ray = Ray::new(&origin, &direction);
 	let sphere = Sphere::new(Point::new(0.0, 0.0, -4.0), 2.0);
-	assert!(sphere.intersect(&ray));
+	assert!(sphere.intersect(&ray) != None);
 
 	let vector_that_misses = Vector::new_normalized(3.0, 0.0, -4.0);
 	let ray_that_misses = Ray::new(&origin, &vector_that_misses);
-	assert!(!sphere.intersect(&ray_that_misses));
+	assert!(sphere.intersect(&ray_that_misses) == None);
     }
 }
