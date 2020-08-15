@@ -68,7 +68,8 @@ fn init_with_config(config: &Config) -> (MyCanvas, sdl2::EventPump) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rustracer", config.screen_width, config.screen_height)
+    let window = video_subsystem.window("rustracer", config.screen_width / 2, config.screen_height / 2)
+	.allow_highdpi()
         .build()
         .unwrap();
 
