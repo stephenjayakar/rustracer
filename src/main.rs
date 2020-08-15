@@ -37,7 +37,7 @@ impl Scene {
     // TODO: don't hardcode scene in here
     fn new() -> Scene {
 	let sphere = Sphere {
-	    center: Point::new(0.0, 0.0, 10.0),
+	    center: Point::new(0.0, 0.0, -10.0),
 	    radius: 1.0,
 	};
 	let boxed_sphere = Box::new(sphere);

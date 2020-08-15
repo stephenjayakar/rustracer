@@ -33,6 +33,11 @@ impl Point {
 pub type Vector = Point;
 
 impl Vector {
+    pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
+	let norm = f64::sqrt(f64::powi(x, 2) + f64::powi(y, 2) + f64::powi(z, 2));
+	Vector::new(x / norm, y / norm, z / norm)
+    }
+
     pub fn points_to_vector(p1: &Point, p2: &Point) -> Vector {
 	Vector {
 	    x: p1.x - p2.x,
@@ -62,5 +67,4 @@ impl Vector {
 	    z: self.z - other_vector.z,
 	}
     }
-
 }
