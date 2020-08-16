@@ -40,10 +40,10 @@ struct Scene {
 
 impl Scene {
     fn new() -> Scene {
-	let sphere = Sphere::new(Point::new(0.0, 0.0, -10.0), 2.0);
+	let sphere = Sphere::new(Point::new(0.0, 0.0, -5.0), 2.0);
 	let boxed_sphere = Box::new(sphere);
 	
-	let light = PointLight::new(Point::new(1.0, 1.0, -7.0));
+	let light = PointLight::new(Point::new(1.0, 1.0, -2.0));
 	let boxed_light = Box::new(light);
 	    
 	let mut objects = Vec::<Box<dyn Object>>::new();
@@ -80,7 +80,7 @@ struct MyCanvas {
 impl MyCanvas {
     fn draw_pixel(&mut self, x: u32, y: u32, c: Color) {
 	self.canvas.set_draw_color(c);
-	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 4, 4));
+	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 2, 2));
 	self.canvas.present();
     }
 }
