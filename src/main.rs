@@ -55,6 +55,22 @@ impl Scene {
 	    lights: lights,
 	}
     }
+
+    // returns the closest intersected objects' distance
+    fn ray_intersection(&self, ray: &Ray) -> Some(f64) {
+	let mut min_dist = f64::consts::INFINITY;
+	let mut min_index = None;
+	for (i, object) in self.objects.iter().enumerate() {
+	    if let Some(d) = object.intersect(ray) {
+		min_dist = f64::min(min_dist, d);
+		min_index = Some(i);
+	    }
+	}
+	match min_index {
+	    Some(i) => Some(min_dist),
+	    None => None,
+	}
+    }
 }
 
 struct MyCanvas {
