@@ -7,8 +7,8 @@ pub struct Ray<'a> {
 impl<'a> Ray<'a> {
     pub fn new(origin: &'a Point, direction: &'a Vector) -> Ray<'a> {
 	Ray {
-	    origin: origin,
-	    direction: direction,
+	    origin,
+	    direction,
 	}
     }
 
@@ -27,11 +27,7 @@ pub struct Point {
 
 impl Point {
     pub fn new(x: f64, y: f64, z: f64) -> Point {
-	Point {
-	    x: x,
-	    y: y,
-	    z: z,
-	}
+	Point { x, y, z }
     }
 
     pub fn add_vector(&self, vector: &Vector) -> Point {
@@ -60,11 +56,7 @@ pub struct Vector {
 
 impl Vector {
     pub fn new(x: f64, y: f64, z: f64) -> Vector {
-	Vector {
-	    x: x,
-	    y: y,
-	    z: z,
-	}
+	Vector { x, y, z }
     }
 
 
@@ -88,26 +80,26 @@ impl Vector {
     }
 
     pub fn add_vector(&self, other_vector: &Vector) -> Vector {
-	Vector {
-	    x: self.x + other_vector.x,
-	    y: self.y + other_vector.y,
-	    z: self.z + other_vector.z,
-	}
+	Vector::new(
+	    self.x + other_vector.x,
+	    self.y + other_vector.y,
+	    self.z + other_vector.z,
+	)
     }
 
     pub fn sub_vector(&self, other_vector: &Vector) -> Vector {
-	Vector {
-	    x: self.x - other_vector.x,
-	    y: self.y - other_vector.y,
-	    z: self.z - other_vector.z,
-	}
+	Vector::new(
+	    self.x - other_vector.x,
+	    self.y - other_vector.y,
+	    self.z - other_vector.z,
+	)
     }
 
     pub fn scale(&self, scalar: f64) -> Vector {
-	Vector {
-	    x: scalar * self.x,
-	    y: scalar * self.y,
-	    z: scalar * self.z,
-	}
+	Vector::new(
+	    scalar * self.x,
+	    scalar * self.y,
+	    scalar * self.z,
+	)
     }
 }

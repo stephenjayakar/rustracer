@@ -35,7 +35,7 @@ impl Config {
 
 struct Scene {
     objects: Vec<Box<dyn Object>>,
-    lights: Vec<Box<PointLight>>,
+    lights: Vec<PointLight>,
 }
 
 impl Scene {
@@ -44,15 +44,14 @@ impl Scene {
 	let boxed_sphere = Box::new(sphere);
 	
 	let light = PointLight::new(Point::new(1.0, 1.0, -2.0));
-	let boxed_light = Box::new(light);
 	    
 	let mut objects = Vec::<Box<dyn Object>>::new();
 	objects.push(boxed_sphere);
 	let mut lights = Vec::new();
-	lights.push(boxed_light);
+	lights.push(light);
 	Scene {
-	    objects: objects,
-	    lights: lights,
+	    objects,
+	    lights,
 	}
     }
 
@@ -67,7 +66,7 @@ impl Scene {
 	    }
 	}
 	match min_index {
-	    Some(i) => Some(min_dist),
+	    Some(_) => Some(min_dist),
 	    None => None,
 	}
     }
@@ -102,7 +101,7 @@ fn init_with_config(config: &Config) -> (MyCanvas, sdl2::EventPump) {
     canvas.present();
     canvas.set_draw_color(Color::RGB(255, 0, 0));
     let event_pump = sdl_context.event_pump().unwrap();
-    (MyCanvas { canvas: canvas }, event_pump)
+    (MyCanvas { canvas }, event_pump)
 }
 
 fn main() {

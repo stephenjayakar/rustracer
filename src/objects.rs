@@ -11,7 +11,7 @@ pub struct PointLight {
 impl PointLight {
     pub fn new(position: Point) -> PointLight {
 	PointLight {
-	    position: position,
+	    position,
 	}
     }
 }
@@ -24,8 +24,8 @@ pub struct Sphere {
 impl Sphere {
     pub fn new(center: Point, radius: f64) -> Sphere {
 	Sphere {
-	    center: center,
-	    radius: radius,
+	    center,
+	    radius,
 	}
     }
 }
