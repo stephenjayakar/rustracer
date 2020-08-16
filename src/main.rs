@@ -11,8 +11,8 @@ mod objects;
 use primitives::{Point, Ray, Vector};
 use objects::{Object, PointLight, Sphere};
 
-const DEFAULT_SCREEN_WIDTH: u32 = 400;
-const DEFAULT_SCREEN_HEIGHT: u32 = 400;
+const DEFAULT_SCREEN_WIDTH: u32 = 800;
+const DEFAULT_SCREEN_HEIGHT: u32 = 800;
 
 struct Config {
     screen_width: u32,
@@ -43,7 +43,7 @@ impl Scene {
 	let sphere = Sphere::new(Point::new(0.0, 0.0, -10.0), 2.0);
 	let boxed_sphere = Box::new(sphere);
 	
-	let light = PointLight::new(Point::new(0.0, 4.0, -8.0));
+	let light = PointLight::new(Point::new(1.0, 1.0, -7.0));
 	let boxed_light = Box::new(light);
 	    
 	let mut objects = Vec::<Box<dyn Object>>::new();
@@ -57,8 +57,8 @@ impl Scene {
     }
 
     // returns the closest intersected objects' distance
-    fn ray_intersection(&self, ray: &Ray) -> Some(f64) {
-	let mut min_dist = f64::consts::INFINITY;
+    fn ray_intersection(&self, ray: &Ray) -> Option<f64> {
+	let mut min_dist = f64::INFINITY;
 	let mut min_index = None;
 	for (i, object) in self.objects.iter().enumerate() {
 	    if let Some(d) = object.intersect(ray) {
@@ -80,7 +80,7 @@ struct MyCanvas {
 impl MyCanvas {
     fn draw_pixel(&mut self, x: u32, y: u32, c: Color) {
 	self.canvas.set_draw_color(c);
-	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 2, 2));
+	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 4, 4));
 	self.canvas.present();
     }
 }
@@ -131,23 +131,15 @@ fn main() {
 			    let y_component = y_start + y_step * (j as f64);
 			    let vector = Vector::new_normalized(x_component, y_component, -1.0);
 			    let ray = Ray::new(&config.origin, &vector);
-			    for object in scene.objects.iter() {
-				// if camera intersects with object...
-				if let Some(d) = object.intersect(&ray) {
-				    let intersection_point = ray.get_intersection_point(d);
-				    for point_light in scene.lights.iter() {
-					let light_direction = point_light.position.sub_point(&intersection_point);
-					let light_ray = Ray::new(&intersection_point, &light_direction);
-					let mut should_draw = true;
-					for obj2 in scene.objects.iter() {
-					    if let Some(_) = obj2.intersect(&light_ray) {
-						should_draw = false;
-						break
-					    }
-					}
-					if should_draw {
-					    my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
-					}
+			    if let Some(d) = scene.ray_intersection(&ray) {
+				let intersection_point = ray.get_intersection_point(d);
+				for point_light in scene.lights.iter() {
+				    let light_direction = point_light.position.sub_point(&intersection_point);
+				    let light_ray = Ray::new(&intersection_point, &light_direction);
+				    if scene.ray_intersection(&light_ray).is_none() {
+					my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
+				    } else {
+					my_canvas.draw_pixel(i, j, Color::RGB(80, 80, 80));
 				    }
 				}
 			    }
