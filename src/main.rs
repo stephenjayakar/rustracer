@@ -79,7 +79,10 @@ struct MyCanvas {
 impl MyCanvas {
     fn draw_pixel(&mut self, x: u32, y: u32, c: Color) {
 	self.canvas.set_draw_color(c);
-	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 2, 2));
+	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 2, 2)).expect("failed to draw rectangle");
+    }
+
+    fn present(&mut self) {
 	self.canvas.present();
     }
 }
@@ -96,8 +99,7 @@ fn init_with_config(config: &Config) -> (MyCanvas, sdl2::EventPump) {
     let mut canvas = window.into_canvas().build().unwrap();
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
-    canvas.fill_rect(Rect::new(10, 10, config.screen_width - 10, config.screen_height - 10));
-    // canvas.clear();
+    canvas.fill_rect(Rect::new(10, 10, config.screen_width - 10, config.screen_height - 10)).expect("failed to draw rectangle");
     canvas.present();
     canvas.set_draw_color(Color::RGB(255, 0, 0));
     let event_pump = sdl_context.event_pump().unwrap();
@@ -144,6 +146,7 @@ fn main() {
 			    }
 			}
 		    }
+		    my_canvas.present();
 		}
     		Event::Quit {..} |
     		Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
