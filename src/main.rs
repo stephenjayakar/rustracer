@@ -11,8 +11,8 @@ mod objects;
 use primitives::{Point, Ray, Vector};
 use objects::{Object, PointLight, Sphere};
 
-const DEFAULT_SCREEN_WIDTH: u32 = 800;
-const DEFAULT_SCREEN_HEIGHT: u32 = 800;
+const DEFAULT_SCREEN_WIDTH: u32 = 1200;
+const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
 
 struct Config {
     screen_width: u32,
@@ -110,11 +110,23 @@ fn main() {
     let config = Config::new(DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT, 90.0);
 
     let (mut my_canvas, mut event_pump) = init_with_config(&config);
-    let scene = Scene::new();
+    let mut scene = Scene::new();
 
     'running: loop {
     	for event in event_pump.poll_iter() {
             match event {
+		Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+		    scene.lights.get_mut(0).unwrap().position.y += 0.5;
+		}
+		Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+		    scene.lights.get_mut(0).unwrap().position.y -= 0.5;
+		}
+		Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+		    scene.lights.get_mut(0).unwrap().position.x += 0.5;
+		}
+		Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+		    scene.lights.get_mut(0).unwrap().position.x -= 0.5;
+		}
 		Event::KeyDown { keycode: Some(Keycode::R), .. } => {
 		    // start rendering
 		    // ray casting algorithm
