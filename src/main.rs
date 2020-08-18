@@ -42,9 +42,9 @@ impl Scene {
     fn new() -> Scene {
 	let sphere = Sphere::new(Point::new(0.0, 0.0, -5.0), 2.0);
 	let boxed_sphere = Box::new(sphere);
-	
+
 	let light = PointLight::new(Point::new(1.0, 1.0, -2.0));
-	    
+
 	let mut objects = Vec::<Box<dyn Object>>::new();
 	objects.push(boxed_sphere);
 	let mut lights = Vec::new();
@@ -87,78 +87,95 @@ impl MyCanvas {
     }
 }
 
-fn init_with_config(config: &Config) -> (MyCanvas, sdl2::EventPump) {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
+struct Raytracer {
+    config: Config,
+    my_canvas: MyCanvas,
+    scene: Scene,
+}
 
-    let window = video_subsystem.window("rustracer", config.screen_width / 2, config.screen_height / 2)
-	.allow_highdpi()
-        .build()
-        .unwrap();
+impl Raytracer {
+    fn new(config: Config, scene: Scene) -> (Raytracer, sdl2::EventPump) {
+	let sdl_context = sdl2::init().unwrap();
+	let video_subsystem = sdl_context.video().unwrap();
 
-    let mut canvas = window.into_canvas().build().unwrap();
+	let window = video_subsystem.window("rustracer", config.screen_width / 2, config.screen_height / 2)
+	    .allow_highdpi()
+            .build()
+            .unwrap();
 
-    canvas.set_draw_color(Color::RGB(0, 255, 255));
-    canvas.fill_rect(Rect::new(10, 10, config.screen_width - 10, config.screen_height - 10)).expect("failed to draw rectangle");
-    canvas.present();
-    canvas.set_draw_color(Color::RGB(255, 0, 0));
-    let event_pump = sdl_context.event_pump().unwrap();
-    (MyCanvas { canvas }, event_pump)
+	let mut canvas = window.into_canvas().build().unwrap();
+
+	canvas.set_draw_color(Color::RGB(0, 255, 255));
+	canvas.fill_rect(Rect::new(10, 10, config.screen_width - 10, config.screen_height - 10)).expect("failed to draw rectangle");
+	canvas.present();
+	canvas.set_draw_color(Color::RGB(255, 0, 0));
+
+	let event_pump = sdl_context.event_pump().unwrap();
+	let my_canvas = MyCanvas { canvas };
+	(Raytracer {
+	    config,
+	    my_canvas,
+	    scene,
+	}, event_pump)
+    }
+
+    fn render (&mut self) {
+	// start rendering
+	// ray casting algorithm
+	let x_width = 2.0 * f64::tan(self.config.fov / 2.0);
+	let y_width = 2.0 * f64::tan(self.config.fov / 2.0);
+
+	let x_step = x_width / (self.config.screen_width as f64);
+	let x_start = -x_width / 2.0;
+	let y_step = y_width / (self.config.screen_height as f64);
+	let y_start = -y_width / 2.0;
+
+	for i in 0..self.config.screen_width {
+    	    for j in 0..self.config.screen_height {
+    		let x_component = x_start + x_step * (i as f64);
+    		let y_component = y_start + y_step * (j as f64);
+    		let vector = Vector::new_normalized(x_component, y_component, -1.0);
+    		let ray = Ray::new(&self.config.origin, &vector);
+    		if let Some(d) = self.scene.ray_intersection(&ray) {
+    		    let intersection_point = ray.get_intersection_point(d);
+    		    for point_light in self.scene.lights.iter() {
+    			let light_direction = point_light.position.sub_point(&intersection_point);
+    			let light_ray = Ray::new(&intersection_point, &light_direction);
+    			if self.scene.ray_intersection(&light_ray).is_none() {
+    			    self.my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
+    			} else {
+    			    self.my_canvas.draw_pixel(i, j, Color::RGB(80, 80, 80));
+    			}
+    		    }
+    		}
+    	    }
+	}
+	self.my_canvas.present();
+    }
 }
 
 fn main() {
     let config = Config::new(DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT, 90.0);
-
-    let (mut my_canvas, mut event_pump) = init_with_config(&config);
-    let mut scene = Scene::new();
+    let (mut raytracer, mut event_pump) = Raytracer::new(config, Scene::new());
 
     'running: loop {
     	for event in event_pump.poll_iter() {
             match event {
 		Event::KeyDown { keycode: Some(Keycode::D), .. } => {
-		    scene.lights.get_mut(0).unwrap().position.y += 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.y += 0.5;
 		}
 		Event::KeyDown { keycode: Some(Keycode::A), .. } => {
-		    scene.lights.get_mut(0).unwrap().position.y -= 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.y -= 0.5;
 		}
 		Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-		    scene.lights.get_mut(0).unwrap().position.x += 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.x += 0.5;
 		}
 		Event::KeyDown { keycode: Some(Keycode::W), .. } => {
-		    scene.lights.get_mut(0).unwrap().position.x -= 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.x -= 0.5;
 		}
-		Event::KeyDown { keycode: Some(Keycode::R), .. } => {
-		    // start rendering
-		    // ray casting algorithm
-		    let x_width = 2.0 * f64::tan(config.fov / 2.0);
-		    let y_width = 2.0 * f64::tan(config.fov / 2.0);
-
-		    let x_step = x_width / (config.screen_width as f64);
-		    let x_start = -x_width / 2.0;
-		    let y_step = y_width / (config.screen_height as f64);
-		    let y_start = -y_width / 2.0;
-
-		    for i in 0..config.screen_width {
-			for j in 0..config.screen_height {
-			    let x_component = x_start + x_step * (i as f64);
-			    let y_component = y_start + y_step * (j as f64);
-			    let vector = Vector::new_normalized(x_component, y_component, -1.0);
-			    let ray = Ray::new(&config.origin, &vector);
-			    if let Some(d) = scene.ray_intersection(&ray) {
-				let intersection_point = ray.get_intersection_point(d);
-				for point_light in scene.lights.iter() {
-				    let light_direction = point_light.position.sub_point(&intersection_point);
-				    let light_ray = Ray::new(&intersection_point, &light_direction);
-				    if scene.ray_intersection(&light_ray).is_none() {
-					my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
-				    } else {
-					my_canvas.draw_pixel(i, j, Color::RGB(80, 80, 80));
-				    }
-				}
-			    }
-			}
-		    }
-		    my_canvas.present();
+		Event::KeyUp { keycode: Some(_), .. } |
+		    Event::KeyDown { keycode: Some(Keycode::R), .. } => {
+		    raytracer.render()
 		}
     		Event::Quit {..} |
     		Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
