@@ -2,6 +2,7 @@ use crate::primitives::{Point, Vector, Ray};
 
 pub trait Object {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
+    fn surface_normal(&self, point: &Point) -> Vector;
 }
 
 pub struct PointLight {
@@ -51,6 +52,12 @@ impl Object for Sphere {
 
 	let distance = if t0 < t1 { t0 } else { t1 };
 	Some(distance)
+    }
+
+    fn surface_normal(&self, point: &Point) -> Vector {
+	let mut vector = point.sub_point(&self.center);
+	vector.normalize();
+	vector
     }
 }
 

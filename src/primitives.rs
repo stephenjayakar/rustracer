@@ -54,15 +54,30 @@ pub struct Vector {
     pub z: f64,
 }
 
+fn norm(x: f64, y: f64, z: f64) -> f64 {
+    f64::sqrt(f64::powi(x, 2) + f64::powi(y, 2) + f64::powi(z, 2))
+}
+
 impl Vector {
     pub fn new(x: f64, y: f64, z: f64) -> Vector {
 	Vector { x, y, z }
     }
 
-
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
-	let norm = f64::sqrt(f64::powi(x, 2) + f64::powi(y, 2) + f64::powi(z, 2));
-	Vector::new(x / norm, y / norm, z / norm)
+	let mut vector = Vector::new(x, y, z);
+	vector.normalize();
+	vector
+    }
+
+    fn norm(&self) -> f64 {
+	norm(self.x, self.y, self.z)
+    }
+
+    pub fn normalize(&mut self) {
+	let inverse_norm = 1.0 / self.norm();
+	self.x *= inverse_norm;
+	self.y *= inverse_norm;
+	self.z *= inverse_norm;
     }
 
     pub fn points_to_vector(p1: &Point, p2: &Point) -> Vector {

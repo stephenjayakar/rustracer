@@ -13,6 +13,7 @@ use objects::{Object, PointLight, Sphere};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
+const EPS: f64 = 0.1;
 
 struct Config {
     screen_width: u32,
@@ -137,7 +138,12 @@ impl Raytracer {
     		let vector = Vector::new_normalized(x_component, y_component, -1.0);
     		let ray = Ray::new(&self.config.origin, &vector);
     		if let Some(d) = self.scene.ray_intersection(&ray) {
-    		    let intersection_point = ray.get_intersection_point(d);
+
+    		    let mut intersection_point = ray.get_intersection_point(d);
+		    // bumping the point a little out of the object to prevent self-collision
+		    let surface_normal = self.scene.objects.get(0).unwrap().surface_normal(&intersection_point);
+		    intersection_point = intersection_point.add_vector(&surface_normal.scale(EPS));
+
     		    for point_light in self.scene.lights.iter() {
     			let light_direction = point_light.position.sub_point(&intersection_point);
     			let light_ray = Ray::new(&intersection_point, &light_direction);
