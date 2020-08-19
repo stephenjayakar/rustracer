@@ -1,5 +1,6 @@
-extern crate sdl2;
+use std::env;
 
+extern crate sdl2;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
@@ -160,10 +161,32 @@ impl Raytracer {
     }
 }
 
+fn parse_args(args: Vec<String>) -> Option<(u32, u32)> {
+    match args.len() {
+	3 => {
+	    let width = args.get(1).unwrap().parse().expect("passed in invalid width");
+	    let height = args.get(1).unwrap().parse().expect("passed in invalid width");
+	    Some((width, height))
+	},
+	_ => {
+	    None
+	}
+    }
+}
+
 fn main() {
-    let config = Config::new(DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT, 90.0);
+    // parse args
+    let args: Vec<String> = env::args().collect();
+    let (screen_width, screen_height) = match parse_args(args) {
+	None => (DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT),
+	Some((width, height)) => (width, height),
+    };
+
+    // set up raytracer
+    let config = Config::new(screen_width, screen_height, 90.0);
     let (mut raytracer, mut event_pump) = Raytracer::new(config, Scene::new());
 
+    // event loop
     'running: loop {
     	for event in event_pump.poll_iter() {
             match event {
