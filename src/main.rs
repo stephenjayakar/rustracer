@@ -1,5 +1,6 @@
-extern crate sdl2;
+use std::env;
 
+extern crate sdl2;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
@@ -86,8 +87,27 @@ fn init_with_config(config: &Config) -> (MyCanvas, sdl2::EventPump) {
     (MyCanvas { canvas: canvas }, event_pump)
 }
 
+fn parse_args(args: Vec<String>) -> Option<(u32, u32)> {
+    match args.len() {
+	3 => {
+	    let width = args.get(1).unwrap().parse().expect("passed in invalid width");
+	    let height = args.get(1).unwrap().parse().expect("passed in invalid width");
+	    Some((width, height))
+	},
+	_ => {
+	    None
+	}
+    }
+}
+
 fn main() {
-    let config = Config::new(DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT, 90.0);
+    let args: Vec<String> = env::args().collect();
+    let (screen_width, screen_height) = match parse_args(args) {
+	None => (DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT),
+	Some((width, height)) => (width, height),
+    };
+
+    let config = Config::new(screen_width, screen_height, 90.0);
 
     let (mut my_canvas, mut event_pump) = init_with_config(&config);
     let scene = Scene::new();
