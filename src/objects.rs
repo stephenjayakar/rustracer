@@ -2,7 +2,7 @@ use crate::primitives::{Point, Vector, Ray};
 
 pub trait Object {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
-    fn surface_normal(&self, point: &Point) -> Vector;
+    fn surface_normal(&self, point: Point) -> Vector;
 }
 
 pub struct PointLight {
@@ -35,7 +35,7 @@ impl Object for Sphere {
     // sphere intersection from bheisler
     // returns intersection distance
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-	let l: Vector = self.center.sub_point(ray.origin);
+	let l: Vector = self.center - *ray.origin;
 	let adj = l.dot(&ray.direction);
 	let d2 = l.dot(&l) - (adj * adj);
 	let radius2 = self.radius * self.radius;
@@ -54,8 +54,8 @@ impl Object for Sphere {
 	Some(distance)
     }
 
-    fn surface_normal(&self, point: &Point) -> Vector {
-	let mut vector = point.sub_point(&self.center);
+    fn surface_normal(&self, point: Point) -> Vector {
+	let mut vector = point - self.center;
 	vector.normalize();
 	vector
     }

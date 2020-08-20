@@ -142,11 +142,11 @@ impl Raytracer {
 
     		    let mut intersection_point = ray.get_intersection_point(d);
 		    // bumping the point a little out of the object to prevent self-collision
-		    let surface_normal = self.scene.objects.get(0).unwrap().surface_normal(&intersection_point);
-		    intersection_point = intersection_point.add_vector(&surface_normal.scale(EPS));
+		    let surface_normal = self.scene.objects.get(0).unwrap().surface_normal(intersection_point);
+		    intersection_point = intersection_point + surface_normal.scale(EPS);
 
     		    for point_light in self.scene.lights.iter() {
-    			let light_direction = point_light.position.sub_point(&intersection_point);
+    			let light_direction = point_light.position - intersection_point;
     			let light_ray = Ray::new(&intersection_point, &light_direction);
     			if self.scene.ray_intersection(&light_ray).is_none() {
     			    self.my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
