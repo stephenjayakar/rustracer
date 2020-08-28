@@ -1,10 +1,5 @@
 use crate::primitives::{Point, Vector, Ray};
 
-pub trait Object {
-    fn intersect(&self, ray: &Ray) -> Option<f64>;
-    fn surface_normal(&self, point: Point) -> Vector;
-}
-
 pub struct PointLight {
     pub position: Point,
 }
@@ -15,6 +10,11 @@ impl PointLight {
 	    position,
 	}
     }
+}
+
+pub trait Object {
+    fn intersect(&self, ray: &Ray) -> Option<f64>;
+    fn surface_normal(&self, point: Point) -> Vector;
 }
 
 pub struct Sphere {
@@ -35,9 +35,9 @@ impl Object for Sphere {
     // sphere intersection from bheisler
     // returns intersection distance
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-	let l: Vector = self.center - *ray.origin;
-	let adj = l.dot(&ray.direction);
-	let d2 = l.dot(&l) - (adj * adj);
+	let l: Vector = self.center - ray.origin;
+	let adj = l.dot(ray.direction);
+	let d2 = l.dot(l) - (adj * adj);
 	let radius2 = self.radius * self.radius;
 	if d2 > radius2 {
             return None;
@@ -55,9 +55,38 @@ impl Object for Sphere {
     }
 
     fn surface_normal(&self, point: Point) -> Vector {
-	let mut vector = point - self.center;
-	vector.normalize();
-	vector
+	(point - self.center).normalized()
+    }
+}
+
+pub struct Plane {
+    pub point: Point,
+    pub normal: Vector,
+}
+
+impl Plane {
+    pub fn new(point: Point, normal: Vector) -> Plane {
+	Plane {
+	    point,
+	    normal,
+	}
+    }
+}
+
+impl Object for Plane {
+    fn intersect(&self, ray: &Ray) -> Option<f64> {
+	let dot_product = ray.direction.dot(self.normal);
+	let d = (self.point - ray.origin).dot(self.normal) /
+	    ray.direction.dot(self.normal);
+	if d > 0.0 {
+	    Some(d)
+	}
+	else {
+	    None
+	}
+    }
+    fn surface_normal(&self, point: Point) -> Vector {
+	self.normal
     }
 }
 

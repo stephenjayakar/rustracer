@@ -10,11 +10,12 @@ mod primitives;
 mod objects;
 
 use primitives::{Point, Ray, Vector};
-use objects::{Object, PointLight, Sphere};
+use objects::{Object, Plane, PointLight, Sphere};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
-const EPS: f64 = 0.1;
+const EPS: f64 = 0.0000001;
+const MOVEMENT_DELTA: f64 = 2.0;
 
 struct Config {
     screen_width: u32,
@@ -40,15 +41,27 @@ struct Scene {
     lights: Vec<PointLight>,
 }
 
+struct RayIntersection {
+    distance: f64,
+    object_index: usize,
+}
+
 impl Scene {
     fn new() -> Scene {
 	let sphere = Sphere::new(Point::new(0.0, 0.0, -5.0), 2.0);
 	let boxed_sphere = Box::new(sphere);
-
-	let light = PointLight::new(Point::new(1.0, 1.0, -2.0));
-
-	let mut objects = Vec::<Box<dyn Object>>::new();
+  	let mut objects = Vec::<Box<dyn Object>>::new();
 	objects.push(boxed_sphere);
+	let boxed_plane = Box::new(
+	    Plane::new(
+		Point::new(0.0, 0.0, -19.0),
+		Vector::new(0.0, 0.0, 1.0),
+	    )
+	);
+	objects.push(boxed_plane);
+
+	let light = PointLight::new(Point::new(2.0, 2.0, 2.0));
+
 	let mut lights = Vec::new();
 	lights.push(light);
 	Scene {
@@ -58,17 +71,19 @@ impl Scene {
     }
 
     // returns the closest intersected objects' distance
-    fn ray_intersection(&self, ray: &Ray) -> Option<f64> {
+    fn ray_intersection(&self, ray: &Ray) -> Option<RayIntersection> {
 	let mut min_dist = f64::INFINITY;
 	let mut min_index = None;
 	for (i, object) in self.objects.iter().enumerate() {
 	    if let Some(d) = object.intersect(ray) {
-		min_dist = f64::min(min_dist, d);
-		min_index = Some(i);
+		if d < min_dist {
+		    min_dist = d;
+		    min_index = Some(i);
+		}
 	    }
 	}
 	match min_index {
-	    Some(_) => Some(min_dist),
+	    Some(i) => Some(RayIntersection { distance: min_dist, object_index: i }),
 	    None => None,
 	}
     }
@@ -107,10 +122,9 @@ impl Raytracer {
 
 	let mut canvas = window.into_canvas().build().unwrap();
 
-	canvas.set_draw_color(Color::RGB(0, 255, 255));
-	canvas.fill_rect(Rect::new(10, 10, config.screen_width - 10, config.screen_height - 10)).expect("failed to draw rectangle");
+	canvas.set_draw_color(Color::RGB(255, 255, 255));
+	canvas.clear();
 	canvas.present();
-	canvas.set_draw_color(Color::RGB(255, 0, 0));
 
 	let event_pump = sdl_context.event_pump().unwrap();
 	let my_canvas = MyCanvas { canvas };
@@ -136,22 +150,25 @@ impl Raytracer {
     	    for j in 0..self.config.screen_height {
     		let x_component = x_start + x_step * (i as f64);
     		let y_component = y_start + y_step * (j as f64);
-    		let vector = Vector::new_normalized(x_component, y_component, -1.0);
-    		let ray = Ray::new(&self.config.origin, &vector);
-    		if let Some(d) = self.scene.ray_intersection(&ray) {
-
-    		    let mut intersection_point = ray.get_intersection_point(d);
+    		let vector = Vector::new(x_component, y_component, -1.0);
+    		let ray = Ray::new(self.config.origin, vector);
+    		if let Some(ray_intersection) = self.scene.ray_intersection(&ray) {
+    		    let mut intersection_point = ray.get_intersection_point(ray_intersection.distance);
 		    // bumping the point a little out of the object to prevent self-collision
-		    let surface_normal = self.scene.objects.get(0).unwrap().surface_normal(intersection_point);
+		    let surface_normal = self.scene.objects.get(ray_intersection.object_index).unwrap().surface_normal(intersection_point);
 		    intersection_point = intersection_point + surface_normal.scale(EPS);
 
     		    for point_light in self.scene.lights.iter() {
-    			let light_direction = point_light.position - intersection_point;
-    			let light_ray = Ray::new(&intersection_point, &light_direction);
+    			let light_direction = (point_light.position - intersection_point).normalized();
+    			let light_ray = Ray::new(intersection_point, light_direction);
+
     			if self.scene.ray_intersection(&light_ray).is_none() {
-    			    self.my_canvas.draw_pixel(i, j, Color::RGB(255, 0, 0));
+			    // lambertian code
+			    let intensity = f64::abs(light_direction.dot(surface_normal));
+			    let color = (intensity * 200.0) as u8;
+    			    self.my_canvas.draw_pixel(i, j, Color::RGB(color, color, color));
     			} else {
-    			    self.my_canvas.draw_pixel(i, j, Color::RGB(80, 80, 80));
+    			    self.my_canvas.draw_pixel(i, j, Color::RGB(0, 0, 0));
     			}
     		    }
     		}
@@ -191,16 +208,16 @@ fn main() {
     	for event in event_pump.poll_iter() {
             match event {
 		Event::KeyDown { keycode: Some(Keycode::D), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.y += 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.y += MOVEMENT_DELTA;
 		}
 		Event::KeyDown { keycode: Some(Keycode::A), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.y -= 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.y -= MOVEMENT_DELTA;
 		}
 		Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.x += 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.x += MOVEMENT_DELTA;
 		}
 		Event::KeyDown { keycode: Some(Keycode::W), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.x -= 0.5;
+		    raytracer.scene.lights.get_mut(0).unwrap().position.x -= MOVEMENT_DELTA;
 		}
 		Event::KeyUp { keycode: Some(_), .. } |
 		    Event::KeyDown { keycode: Some(Keycode::R), .. } => {

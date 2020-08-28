@@ -1,22 +1,23 @@
 use std::ops::{Add, Sub};
 
 #[derive(Debug)]
-pub struct Ray<'a> {
-    pub origin: &'a Point,
-    pub direction: &'a Vector,
+pub struct Ray {
+    pub origin: Point,
+    pub direction: Vector,
 }
 
-impl<'a> Ray<'a> {
-    pub fn new(origin: &'a Point, direction: &'a Vector) -> Ray<'a> {
+impl Ray {
+    // normalizes the direction vector
+    pub fn new(origin: Point, direction: Vector) -> Ray {
 	Ray {
 	    origin,
-	    direction,
+	    direction: direction.normalized(),
 	}
     }
 
     pub fn get_intersection_point(&self, scalar: f64) -> Point {
 	let scaled_vector = self.direction.scale(scalar);
-	*self.origin + scaled_vector
+	self.origin + scaled_vector
     }
 }
 
@@ -66,7 +67,13 @@ impl Vector {
 	self.z *= inverse_norm;
     }
 
-    pub fn dot(&self, other_vector: &Vector) -> f64 {
+    pub fn normalized(&self) -> Vector {
+	let mut return_vector = *self;
+	return_vector.normalize();
+	return_vector
+    }
+
+    pub fn dot(&self, other_vector: Vector) -> f64 {
 	self.x * other_vector.x +
 	    self.y * other_vector.y +
 	    self.z * other_vector.z
