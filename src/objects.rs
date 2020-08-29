@@ -75,7 +75,6 @@ impl Plane {
 
 impl Object for Plane {
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-	let dot_product = ray.direction.dot(self.normal);
 	let d = (self.point - ray.origin).dot(self.normal) /
 	    ray.direction.dot(self.normal);
 	if d > 0.0 {
@@ -85,7 +84,7 @@ impl Object for Plane {
 	    None
 	}
     }
-    fn surface_normal(&self, point: Point) -> Vector {
+    fn surface_normal(&self, _point: Point) -> Vector {
 	self.normal
     }
 }

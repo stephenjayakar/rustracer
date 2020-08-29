@@ -110,13 +110,12 @@ impl Scene {
 		}
 	    }
 	}
-	if let Some(object) = min_object {
-	    Some(RayIntersection {
+	match min_object {
+	    Some(object) => Some(RayIntersection {
 		object,
 		distance: min_dist,
-	    })
-	} else {
-	    None
+	    }),
+	    None => None,
 	}
     }
 
