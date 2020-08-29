@@ -17,6 +17,16 @@ const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
 const EPS: f64 = 0.0000001;
 const MOVEMENT_DELTA: f64 = 2.0;
 
+const GENERIC_ERROR: &str = "Something went wrong, sorry!";
+
+// this will panic on integer overflow
+// TODO: add error messages on overflow
+fn add_colors(color_a: Color, color_b: Color) -> Color {
+    Color::RGB(color_a.r + color_b.r,
+	       color_a.g + color_b.g,
+	       color_a.b + color_b.b)
+}
+
 struct Config {
     screen_width: u32,
     screen_height: u32,
@@ -37,54 +47,104 @@ impl Config {
 }
 
 struct Scene {
-    objects: Vec<Box<dyn Object>>,
+    planes: Vec<Plane>,
+    spheres: Vec<Sphere>,
     lights: Vec<PointLight>,
 }
 
-struct RayIntersection {
+struct RayIntersection<'a> {
     distance: f64,
-    object_index: usize,
+    object: &'a dyn Object,
 }
 
 impl Scene {
     fn new() -> Scene {
 	let sphere = Sphere::new(Point::new(0.0, 0.0, -5.0), 2.0);
-	let boxed_sphere = Box::new(sphere);
-  	let mut objects = Vec::<Box<dyn Object>>::new();
-	objects.push(boxed_sphere);
-	let boxed_plane = Box::new(
-	    Plane::new(
-		Point::new(0.0, 0.0, -19.0),
-		Vector::new(0.0, 0.0, 1.0),
-	    )
+	let mut spheres = Vec::new();
+	spheres.push(sphere);
+	let mut planes = Vec::new();
+	let plane = Plane::new(
+	    Point::new(0.0, 0.0, -19.0),
+	    Vector::new(0.0, 0.0, 1.0),
 	);
-	objects.push(boxed_plane);
+	planes.push(plane);
 
 	let light = PointLight::new(Point::new(2.0, 2.0, 2.0));
 
 	let mut lights = Vec::new();
 	lights.push(light);
 	Scene {
-	    objects,
+	    planes,
+	    spheres,
 	    lights,
 	}
     }
 
-    // returns the closest intersected objects' distance
-    fn ray_intersection(&self, ray: &Ray) -> Option<RayIntersection> {
+    // allows indexing across multiple object data structures
+    fn get_object_by_index(&self, index: usize) -> &dyn Object {
+	let planes_len = self.planes.len();
+	let spheres_len = self.spheres.len();
+
+	if index < planes_len {
+	    self.planes.get(index).expect(GENERIC_ERROR)
+	} else if index < planes_len + spheres_len {
+	    self.spheres.get(index - planes_len).expect(GENERIC_ERROR)
+	} else {
+	    panic!("index out of range of scene");
+	}
+    }
+
+    fn num_objects(&self) -> usize {
+	self.planes.len() + self.spheres.len()
+    }
+
+    fn object_intersection(&self, ray: &Ray) -> Option<RayIntersection> {
 	let mut min_dist = f64::INFINITY;
-	let mut min_index = None;
-	for (i, object) in self.objects.iter().enumerate() {
+	let mut min_object = None;
+	for i in 0..self.num_objects() {
+	    let object = self.get_object_by_index(i);
 	    if let Some(d) = object.intersect(ray) {
 		if d < min_dist {
 		    min_dist = d;
-		    min_index = Some(i);
+		    min_object = Some(object);
 		}
 	    }
 	}
-	match min_index {
-	    Some(i) => Some(RayIntersection { distance: min_dist, object_index: i }),
-	    None => None,
+	if let Some(object) = min_object {
+	    Some(RayIntersection {
+		object,
+		distance: min_dist,
+	    })
+	} else {
+	    None
+	}
+    }
+
+    // for a ray, return a color.
+    fn cast_ray(&self, ray: &Ray) -> Option<Color> {
+	if let Some(ray_intersection) = self.object_intersection(ray) {
+	    let object = ray_intersection.object;
+	    let min_dist = ray_intersection.distance;
+    	    let mut intersection_point: Point = ray.get_intersection_point(min_dist);
+	    // bumping the point a little out of the object to prevent self-collision
+	    let surface_normal: Vector = object.surface_normal(intersection_point);
+	    intersection_point = intersection_point + surface_normal.scale(EPS);
+
+	    let mut color = Color::RGB(0, 0, 0);
+    	    for point_light in self.lights.iter() {
+    		let light_direction = (point_light.position - intersection_point).normalized();
+    		let light_ray = Ray::new(intersection_point, light_direction);
+
+    		if self.object_intersection(&light_ray).is_none() {
+		    // lambertian code
+		    let intensity = f64::abs(light_direction.dot(surface_normal));
+		    let color_value = (intensity * 200.0) as u8;
+		    color = add_colors(color, Color::RGB(color_value, color_value, color_value));
+		}
+    	    }
+	    Some(color)
+	} else {
+	    None
 	}
     }
 }
@@ -152,26 +212,9 @@ impl Raytracer {
     		let y_component = y_start + y_step * (j as f64);
     		let vector = Vector::new(x_component, y_component, -1.0);
     		let ray = Ray::new(self.config.origin, vector);
-    		if let Some(ray_intersection) = self.scene.ray_intersection(&ray) {
-    		    let mut intersection_point = ray.get_intersection_point(ray_intersection.distance);
-		    // bumping the point a little out of the object to prevent self-collision
-		    let surface_normal = self.scene.objects.get(ray_intersection.object_index).unwrap().surface_normal(intersection_point);
-		    intersection_point = intersection_point + surface_normal.scale(EPS);
-
-    		    for point_light in self.scene.lights.iter() {
-    			let light_direction = (point_light.position - intersection_point).normalized();
-    			let light_ray = Ray::new(intersection_point, light_direction);
-
-    			if self.scene.ray_intersection(&light_ray).is_none() {
-			    // lambertian code
-			    let intensity = f64::abs(light_direction.dot(surface_normal));
-			    let color = (intensity * 200.0) as u8;
-    			    self.my_canvas.draw_pixel(i, j, Color::RGB(color, color, color));
-    			} else {
-    			    self.my_canvas.draw_pixel(i, j, Color::RGB(0, 0, 0));
-    			}
-    		    }
-    		}
+		if let Some(color) = self.scene.cast_ray(&ray) {
+		    self.my_canvas.draw_pixel(i, j, color);
+		}
     	    }
 	}
 	self.my_canvas.present();

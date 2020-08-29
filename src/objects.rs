@@ -4,14 +4,6 @@ pub struct PointLight {
     pub position: Point,
 }
 
-impl PointLight {
-    pub fn new(position: Point) -> PointLight {
-	PointLight {
-	    position,
-	}
-    }
-}
-
 pub trait Object {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
     fn surface_normal(&self, point: Point) -> Vector;
@@ -22,11 +14,24 @@ pub struct Sphere {
     pub radius: f64,
 }
 
+pub struct Plane {
+    pub point: Point,
+    pub normal: Vector,
+}
+
 impl Sphere {
     pub fn new(center: Point, radius: f64) -> Sphere {
 	Sphere {
 	    center,
 	    radius,
+	}
+    }
+}
+
+impl PointLight {
+    pub fn new(position: Point) -> PointLight {
+	PointLight {
+	    position,
 	}
     }
 }
@@ -57,11 +62,6 @@ impl Object for Sphere {
     fn surface_normal(&self, point: Point) -> Vector {
 	(point - self.center).normalized()
     }
-}
-
-pub struct Plane {
-    pub point: Point,
-    pub normal: Vector,
 }
 
 impl Plane {
