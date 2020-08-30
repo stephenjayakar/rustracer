@@ -59,17 +59,20 @@ struct RayIntersection<'a> {
 
 impl Scene {
     fn new() -> Scene {
-	let sphere = Sphere::new(Point::new(0.0, 0.0, -5.0), 2.0);
-	let mut spheres = Vec::new();
-	spheres.push(sphere);
+	let spheres = vec![
+	    Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0),
+	    Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0),
+	    Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0),
+	    Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0),
+	];
 	let mut planes = Vec::new();
 	let plane = Plane::new(
-	    Point::new(0.0, 0.0, -19.0),
-	    Vector::new(0.0, 0.0, 1.0),
+	    Point::new(0.0, 10.0, 0.0),
+	    Vector::new(0.0, -1.0, 0.0),
 	);
 	planes.push(plane);
 
-	let light = PointLight::new(Point::new(2.0, 2.0, 2.0));
+	let light = PointLight::new(Point::new(2.0, -4.0, 2.0));
 
 	let mut lights = Vec::new();
 	lights.push(light);
@@ -250,16 +253,16 @@ fn main() {
     	for event in event_pump.poll_iter() {
             match event {
 		Event::KeyDown { keycode: Some(Keycode::D), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.y += MOVEMENT_DELTA;
-		}
-		Event::KeyDown { keycode: Some(Keycode::A), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.y -= MOVEMENT_DELTA;
-		}
-		Event::KeyDown { keycode: Some(Keycode::S), .. } => {
 		    raytracer.scene.lights.get_mut(0).unwrap().position.x += MOVEMENT_DELTA;
 		}
-		Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+		Event::KeyDown { keycode: Some(Keycode::A), .. } => {
 		    raytracer.scene.lights.get_mut(0).unwrap().position.x -= MOVEMENT_DELTA;
+		}
+		Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+		    raytracer.scene.lights.get_mut(0).unwrap().position.y += MOVEMENT_DELTA;
+		}
+		Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+		    raytracer.scene.lights.get_mut(0).unwrap().position.y -= MOVEMENT_DELTA;
 		}
 		Event::KeyUp { keycode: Some(_), .. } |
 		    Event::KeyDown { keycode: Some(Keycode::R), .. } => {
