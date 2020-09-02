@@ -140,7 +140,7 @@ impl Scene {
     		if self.object_intersection(&light_ray).is_none() {
 		    // lambertian code
 		    let intensity = f64::abs(light_direction.dot(surface_normal));
-		    let color_value = (intensity * 200.0) as u8;
+		    let color_value = (intensity * 255.0) as u8;
 		    color = add_colors(color, Color::RGB(color_value, color_value, color_value));
 		}
     	    }
