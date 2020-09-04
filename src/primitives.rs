@@ -1,6 +1,28 @@
-use std::ops::{Add, Sub};
+extern crate sdl2;
 
-#[derive(Debug)]
+use std::ops::{Add, AddAssign, Sub};
+
+// struct that is essentially a wrapper on top of SDL2::Color, but allows accumulation
+#[derive(Clone, Copy, Debug)]
+pub struct Spectrum {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+impl Spectrum {
+    pub fn to_sdl2_color(&self) -> sdl2::pixels::Color {
+	sdl2::pixels::Color::RGB(self.r, self.g, self.b)
+    }
+
+    pub fn new(r: u8, g: u8, b: u8) -> Spectrum {
+	Spectrum {
+	    r, g, b
+	}
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Ray {
     pub origin: Point,
     pub direction: Vector,
@@ -135,3 +157,20 @@ impl Sub for Vector {
 	)
     }
 }
+
+// note: this will panic on overflow.  be careful!
+impl Add for Spectrum {
+    type Output = Spectrum;
+    fn add(self, other: Spectrum) -> Self::Output {
+	Spectrum::new(self.r + other.r,
+		      self.g + other.g,
+		      self.b + other.b)
+    }
+}
+
+impl AddAssign for Spectrum {
+    fn add_assign(&mut self, other: Self) {
+	*self = *self + other;
+    }
+}
+

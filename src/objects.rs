@@ -1,12 +1,9 @@
 use crate::primitives::{Point, Vector, Ray};
 
-pub struct PointLight {
-    pub position: Point,
-}
-
 pub trait Object {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
     fn surface_normal(&self, point: Point) -> Vector;
+    // fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum;
 }
 
 pub struct Sphere {
@@ -24,14 +21,6 @@ impl Sphere {
 	Sphere {
 	    center,
 	    radius,
-	}
-    }
-}
-
-impl PointLight {
-    pub fn new(position: Point) -> PointLight {
-	PointLight {
-	    position,
 	}
     }
 }

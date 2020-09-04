@@ -2,15 +2,15 @@ use std::env;
 
 extern crate sdl2;
 use sdl2::rect::Rect;
-use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
 
 mod primitives;
 mod objects;
 
-use primitives::{Point, Ray, Vector};
-use objects::{Object, Plane, PointLight, Sphere};
+use primitives::{Point, Ray, Spectrum, Vector};
+use objects::{Object, Plane, Sphere};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
@@ -18,14 +18,6 @@ const EPS: f64 = 0.0000001;
 const MOVEMENT_DELTA: f64 = 2.0;
 
 const GENERIC_ERROR: &str = "Something went wrong, sorry!";
-
-// this will panic on integer overflow
-// TODO: add error messages on overflow
-fn add_colors(color_a: Color, color_b: Color) -> Color {
-    Color::RGB(color_a.r + color_b.r,
-	       color_a.g + color_b.g,
-	       color_a.b + color_b.b)
-}
 
 struct Config {
     screen_width: u32,
@@ -49,7 +41,6 @@ impl Config {
 struct Scene {
     planes: Vec<Plane>,
     spheres: Vec<Sphere>,
-    lights: Vec<PointLight>,
 }
 
 struct RayIntersection<'a> {
@@ -72,14 +63,9 @@ impl Scene {
 	);
 	planes.push(plane);
 
-	let light = PointLight::new(Point::new(2.0, -4.0, 2.0));
-
-	let mut lights = Vec::new();
-	lights.push(light);
 	Scene {
 	    planes,
 	    spheres,
-	    lights,
 	}
     }
 
@@ -123,30 +109,32 @@ impl Scene {
     }
 
     // for a ray, return a color.
-    fn cast_ray(&self, ray: &Ray) -> Option<Color> {
-	if let Some(ray_intersection) = self.object_intersection(ray) {
-	    let object = ray_intersection.object;
-	    let min_dist = ray_intersection.distance;
-    	    let mut intersection_point: Point = ray.get_intersection_point(min_dist);
-	    // bumping the point a little out of the object to prevent self-collision
-	    let surface_normal: Vector = object.surface_normal(intersection_point);
-	    intersection_point = intersection_point + surface_normal.scale(EPS);
+    fn cast_ray(&self, ray: &Ray) -> Option<Spectrum> {
+	match self.object_intersection(ray) {
+	    Some(ray_intersection) => {
+		let object = ray_intersection.object;
+		let min_dist = ray_intersection.distance;
+    		let mut intersection_point: Point = ray.get_intersection_point(min_dist);
+		// bumping the point a little out of the object to prevent self-collision
+		let surface_normal: Vector = object.surface_normal(intersection_point);
+		intersection_point = intersection_point + surface_normal.scale(EPS);
 
-	    let mut color = Color::RGB(0, 0, 0);
-    	    for point_light in self.lights.iter() {
-    		let light_direction = (point_light.position - intersection_point).normalized();
-    		let light_ray = Ray::new(intersection_point, light_direction);
+		// replace this with object emissivity
+		let color = Spectrum::new(100, 0, 0);
+    		// for point_light in self.lights.iter() {
+    		//     let light_direction = (point_light.position - intersection_point).normalized();
+    		//     let light_ray = Ray::new(intersection_point, light_direction);
 
-    		if self.object_intersection(&light_ray).is_none() {
-		    // lambertian code
-		    let intensity = f64::abs(light_direction.dot(surface_normal));
-		    let color_value = (intensity * 255.0) as u8;
-		    color = add_colors(color, Color::RGB(color_value, color_value, color_value));
-		}
-    	    }
-	    Some(color)
-	} else {
-	    None
+    		//     if self.object_intersection(&light_ray).is_none() {
+		// 	// lambertian code
+		// 	let intensity = f64::abs(light_direction.dot(surface_normal));
+		// 	let color_value = (intensity * 255.0) as u8;
+		// 	color += Spectrum::new(color_value, color_value, color_value);
+		//     }
+    		// }
+		Some(color)
+	    }
+	    None => None
 	}
     }
 }
@@ -156,8 +144,8 @@ struct MyCanvas {
 }
 
 impl MyCanvas {
-    fn draw_pixel(&mut self, x: u32, y: u32, c: Color) {
-	self.canvas.set_draw_color(c);
+    fn draw_pixel(&mut self, x: u32, y: u32, s: Spectrum) {
+	self.canvas.set_draw_color(s.to_sdl2_color());
 	self.canvas.fill_rect(Rect::new(x as i32, y as i32, 2, 2)).expect("failed to draw rectangle");
     }
 
@@ -252,18 +240,6 @@ fn main() {
     'running: loop {
     	for event in event_pump.poll_iter() {
             match event {
-		Event::KeyDown { keycode: Some(Keycode::D), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.x += MOVEMENT_DELTA;
-		}
-		Event::KeyDown { keycode: Some(Keycode::A), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.x -= MOVEMENT_DELTA;
-		}
-		Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.y += MOVEMENT_DELTA;
-		}
-		Event::KeyDown { keycode: Some(Keycode::W), .. } => {
-		    raytracer.scene.lights.get_mut(0).unwrap().position.y -= MOVEMENT_DELTA;
-		}
 		Event::KeyUp { keycode: Some(_), .. } |
 		    Event::KeyDown { keycode: Some(Keycode::R), .. } => {
 		    raytracer.render()
