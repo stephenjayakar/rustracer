@@ -19,3 +19,9 @@ cargo run
 
 * sdl2
 * rust
+
+# inspiration
+
+* scratchapixel
+* pbrt
+* cs-184 at Berkeley
