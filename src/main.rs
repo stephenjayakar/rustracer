@@ -10,7 +10,7 @@ mod primitives;
 mod objects;
 
 use primitives::{Point, Ray, Spectrum, Vector};
-use objects::{Object, Plane, Sphere};
+use objects::{BSDF, Material, Object, Plane, Sphere};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
@@ -50,16 +50,32 @@ struct RayIntersection<'a> {
 
 impl Scene {
     fn new() -> Scene {
+	let red_diffuse_material = Material::new(
+	    BSDF::Diffuse,
+	    Spectrum::new(100, 0, 0),
+	    Spectrum::new(0, 0, 0),
+	);
+	let grey_diffuse_material = Material::new(
+	    BSDF::Diffuse,
+	    Spectrum::new(50, 50, 50),
+	    Spectrum::new(0, 0, 0),
+	);
+	let blue_light_material = Material::new(
+	    BSDF::Diffuse,
+	    Spectrum::new(0, 0, 100),
+	    Spectrum::new(0, 0, 100),
+	);
 	let spheres = vec![
-	    Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0),
-	    Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0),
-	    Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0),
-	    Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0),
+	    Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0, red_diffuse_material),
+	    Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
+	    Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, red_diffuse_material),
+	    Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
 	];
 	let mut planes = Vec::new();
 	let plane = Plane::new(
 	    Point::new(0.0, 10.0, 0.0),
 	    Vector::new(0.0, -1.0, 0.0),
+	    grey_diffuse_material,
 	);
 	planes.push(plane);
 
@@ -119,8 +135,8 @@ impl Scene {
 		let surface_normal: Vector = object.surface_normal(intersection_point);
 		intersection_point = intersection_point + surface_normal.scale(EPS);
 
-		// replace this with object emissivity
-		let color = Spectrum::new(100, 0, 0);
+		// simulating zero bounce radiance
+		let color = object.material().reflectance;
     		// for point_light in self.lights.iter() {
     		//     let light_direction = (point_light.position - intersection_point).normalized();
     		//     let light_ray = Ray::new(intersection_point, light_direction);

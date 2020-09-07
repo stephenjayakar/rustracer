@@ -1,26 +1,64 @@
-use crate::primitives::{Point, Vector, Ray};
+use crate::primitives::{Point,  Ray, Spectrum, Vector};
+
+#[derive(Clone, Copy, Debug)]
+pub enum BSDF {
+    Diffuse,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Material {
+    pub bsdf: BSDF,
+    pub reflectance: Spectrum,
+    pub emittance: Spectrum,
+}
 
 pub trait Object {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
     fn surface_normal(&self, point: Point) -> Vector;
-    // fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum;
+    fn material(&self) -> &Material;
 }
 
 pub struct Sphere {
     pub center: Point,
     pub radius: f64,
+    material: Material,
 }
 
 pub struct Plane {
     pub point: Point,
     pub normal: Vector,
+    material: Material,
+}
+
+impl Material {
+    pub fn new(bsdf: BSDF, reflectance: Spectrum, emittance: Spectrum) -> Material {
+	Material {
+	    bsdf,
+	    reflectance,
+	    emittance,
+	}
+    }
+
+    pub fn sample_bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
+	match self.bsdf {
+	    BSDF::Diffuse => {
+		self.reflectance * (1.0 / std::f64::consts::PI)
+	    }
+	}
+    }
+
+    pub fn bounce(&self, wi: Vector) -> Vector {
+	// return random vector
+	unimplemented!();
+    }
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f64) -> Sphere {
+    pub fn new(center: Point, radius: f64, material: Material) -> Sphere {
 	Sphere {
 	    center,
 	    radius,
+	    material,
 	}
     }
 }
@@ -51,13 +89,18 @@ impl Object for Sphere {
     fn surface_normal(&self, point: Point) -> Vector {
 	(point - self.center).normalized()
     }
+
+    fn material(&self) -> &Material {
+	&self.material
+    }
 }
 
 impl Plane {
-    pub fn new(point: Point, normal: Vector) -> Plane {
+    pub fn new(point: Point, normal: Vector, material: Material) -> Plane {
 	Plane {
 	    point,
 	    normal,
+	    material,
 	}
     }
 }
@@ -73,8 +116,13 @@ impl Object for Plane {
 	    None
 	}
     }
+
     fn surface_normal(&self, _point: Point) -> Vector {
 	self.normal
+    }
+
+    fn material(&self) -> &Material {
+	&self.material
     }
 }
 
