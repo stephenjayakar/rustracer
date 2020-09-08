@@ -136,7 +136,7 @@ impl Scene {
 		intersection_point = intersection_point + surface_normal.scale(EPS);
 
 		// simulating zero bounce radiance
-		let color = object.material().reflectance;
+		let color = object.material().emittance;
     		// for point_light in self.lights.iter() {
     		//     let light_direction = (point_light.position - intersection_point).normalized();
     		//     let light_ray = Ray::new(intersection_point, light_direction);
