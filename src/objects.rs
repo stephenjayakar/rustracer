@@ -48,7 +48,11 @@ impl Material {
     }
 
     pub fn bounce(&self, wi: Vector) -> Vector {
-	// return random vector
+	match self.bsdf {
+	    BSDF::Diffuse => {
+		// return random vector
+	    }
+	}
 	unimplemented!();
     }
 }

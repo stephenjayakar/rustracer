@@ -15,7 +15,6 @@ use objects::{BSDF, Material, Object, Plane, Sphere};
 const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
 const EPS: f64 = 0.0000001;
-const MOVEMENT_DELTA: f64 = 2.0;
 
 const GENERIC_ERROR: &str = "Something went wrong, sorry!";
 
@@ -70,6 +69,7 @@ impl Scene {
 	    Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
 	    Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, red_diffuse_material),
 	    Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
+	    Sphere::new(Point::new(5.0, -10.0, -14.0), 2.0, blue_light_material),
 	];
 	let mut planes = Vec::new();
 	let plane = Plane::new(
@@ -124,8 +124,8 @@ impl Scene {
 	}
     }
 
-    // for a ray, return a color.
-    fn cast_ray(&self, ray: &Ray) -> Option<Spectrum> {
+    // for a ray, estimate global illumination
+    fn cast_ray(&self, ray: &Ray) -> Spectrum {
 	match self.object_intersection(ray) {
 	    Some(ray_intersection) => {
 		let object = ray_intersection.object;
@@ -135,8 +135,22 @@ impl Scene {
 		let surface_normal: Vector = object.surface_normal(intersection_point);
 		intersection_point = intersection_point + surface_normal.scale(EPS);
 
-		// simulating zero bounce radiance
-		let color = object.material().emittance;
+		let bounces_left = ray.bounces_left;
+		let emittance = object.material().emittance;
+		match bounces_left {
+		    0 => {
+			// zero bounce radiance
+			emittance
+		    },
+		    1 => {
+			// direct lighting
+			unimplemented!()
+		    },
+		    _ => {
+			// global illumination
+			unimplemented!()
+		    }
+		}
     		// for point_light in self.lights.iter() {
     		//     let light_direction = (point_light.position - intersection_point).normalized();
     		//     let light_ray = Ray::new(intersection_point, light_direction);
@@ -148,9 +162,8 @@ impl Scene {
 		// 	color += Spectrum::new(color_value, color_value, color_value);
 		//     }
     		// }
-		Some(color)
 	    }
-	    None => None
+	    None => Spectrum::new(0, 0, 0)
 	}
     }
 }
@@ -217,10 +230,9 @@ impl Raytracer {
     		let x_component = x_start + x_step * (i as f64);
     		let y_component = y_start + y_step * (j as f64);
     		let vector = Vector::new(x_component, y_component, -1.0);
-    		let ray = Ray::new(self.config.origin, vector);
-		if let Some(color) = self.scene.cast_ray(&ray) {
-		    self.my_canvas.draw_pixel(i, j, color);
-		}
+    		let ray = Ray::new(self.config.origin, vector, 0);
+		let color = self.scene.cast_ray(&ray);
+		self.my_canvas.draw_pixel(i, j, color);
     	    }
 	}
 	self.my_canvas.present();
