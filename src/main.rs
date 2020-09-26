@@ -69,7 +69,7 @@ impl Scene {
 	    Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
 	    Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, red_diffuse_material),
 	    Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
-	    Sphere::new(Point::new(5.0, -10.0, -14.0), 2.0, blue_light_material),
+	    Sphere::new(Point::new(5.0, 10.0, -14.0), 2.0, blue_light_material),
 	];
 	let mut planes = Vec::new();
 	let plane = Plane::new(
@@ -223,12 +223,12 @@ impl Raytracer {
 	let x_step = x_width / (self.config.screen_width as f64);
 	let x_start = -x_width / 2.0;
 	let y_step = y_width / (self.config.screen_height as f64);
-	let y_start = -y_width / 2.0;
+	let y_start = y_width / 2.0;
 
 	for i in 0..self.config.screen_width {
     	    for j in 0..self.config.screen_height {
     		let x_component = x_start + x_step * (i as f64);
-    		let y_component = y_start + y_step * (j as f64);
+    		let y_component = y_start - y_step * (j as f64);
     		let vector = Vector::new(x_component, y_component, -1.0);
     		let ray = Ray::new(self.config.origin, vector, 0);
 		let color = self.scene.cast_ray(&ray);
