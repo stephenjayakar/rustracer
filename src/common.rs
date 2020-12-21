@@ -16,9 +16,7 @@ impl Spectrum {
     }
 
     pub fn new(r: u8, g: u8, b: u8) -> Spectrum {
-        Spectrum {
-            r, g, b
-        }
+        Spectrum { r, g, b }
     }
 }
 
@@ -26,9 +24,7 @@ impl Spectrum {
 impl Add for Spectrum {
     type Output = Spectrum;
     fn add(self, other: Spectrum) -> Self::Output {
-        Spectrum::new(self.r + other.r,
-                      self.g + other.g,
-                      self.b + other.b)
+        Spectrum::new(self.r + other.r, self.g + other.g, self.b + other.b)
     }
 }
 
@@ -45,14 +41,13 @@ impl Mul<f64> for Spectrum {
         let new_r = self.r as f64 * other;
         let new_g = self.g as f64 * other;
         let new_b = self.b as f64 * other;
-        debug_assert!(new_r <= 255.0 &&
-                      new_g <= 255.0 &&
-                      new_b <= 255.0);
+        debug_assert!(new_r <= 255.0 && new_g <= 255.0 && new_b <= 255.0);
         unsafe {
-            Spectrum::new((self.r as f64 * other).to_int_unchecked(),
-                          (self.g as f64 * other).to_int_unchecked(),
-                          (self.b as f64 * other).to_int_unchecked())
+            Spectrum::new(
+                (self.r as f64 * other).to_int_unchecked(),
+                (self.g as f64 * other).to_int_unchecked(),
+                (self.b as f64 * other).to_int_unchecked(),
+            )
         }
     }
 }
-
