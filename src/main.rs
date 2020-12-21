@@ -6,10 +6,12 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
+mod common;
 mod primitives;
 mod objects;
 
-use primitives::{Point, Ray, Spectrum, Vector};
+use common::{Spectrum};
+use primitives::{Point, Ray, Vector};
 use objects::{BSDF, Material, Object, Plane, Sphere};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 1200;

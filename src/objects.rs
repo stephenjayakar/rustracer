@@ -1,4 +1,5 @@
-use crate::primitives::{Point,  Ray, Spectrum, Vector};
+use crate::common::{Spectrum};
+use crate::primitives::{Point,  Ray, Vector};
 
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
