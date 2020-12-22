@@ -176,16 +176,13 @@ struct Raytracer {
 }
 
 impl Raytracer {
-    fn new(config: Config, scene: Scene) -> (Raytracer, sdl2::EventPump) {
-        let (canvas, event_pump) = Canvas::new(config.screen_width, config.screen_height);
-        (
-            Raytracer {
-                config,
-                canvas,
-                scene,
-            },
-            event_pump,
-        )
+    fn new(config: Config, scene: Scene) -> Raytracer {
+        let canvas = Canvas::new(config.screen_width, config.screen_height);
+        Raytracer {
+            config,
+            canvas,
+            scene,
+        }
     }
 
     fn render(&mut self) {
@@ -241,26 +238,7 @@ fn main() {
 
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
-    let (mut raytracer, mut event_pump) = Raytracer::new(config, Scene::new());
-
-    // event loop
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::KeyUp {
-                    keycode: Some(_), ..
-                }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::R),
-                    ..
-                } => raytracer.render(),
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {}
-            }
-        }
-    }
+    let mut raytracer = Raytracer::new(config, Scene::new());
+    raytracer.render();
+    loop {}
 }
