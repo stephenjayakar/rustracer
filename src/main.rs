@@ -69,43 +69,42 @@ impl Raytracer {
     }
 
     fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
-        match self.scene.intersect(ray) {
-            Some(ray_intersection) => {
-                let object = ray_intersection.object;
-                let min_dist = ray_intersection.distance;
-                let mut intersection_point: Point = ray.get_intersection_point(min_dist);
-                // bumping the point a little out of the object to prevent self-collision
-                let surface_normal: Vector = object.surface_normal(intersection_point);
-                intersection_point = intersection_point + surface_normal.scale(EPS);
+        if let Some(ray_intersection) = self.scene.intersect(ray) {
+            let object = ray_intersection.object;
+            let min_dist = ray_intersection.distance;
+            let mut intersection_point: Point = ray.get_intersection_point(min_dist);
+            // bumping the point a little out of the object to prevent self-collision
+            let surface_normal: Vector = object.surface_normal(intersection_point);
+            intersection_point = intersection_point + surface_normal.scale(EPS);
 
-                let emittance = object.material().emittance;
-                match bounces_left {
-                    0 => {
-                        // zero bounce radiance
-                        emittance
-                    }
-                    1 => {
-                        // direct lighting
-                        unimplemented!()
-                    }
-                    _ => {
-                        // global illumination
-                        unimplemented!()
-                    }
+            let emittance = object.material().emittance;
+            match bounces_left {
+                0 => {
+                    // zero bounce radiance
+                    emittance
                 }
-                // for point_light in self.lights.iter() {
-                //     let light_direction = (point_light.position - intersection_point).normalized();
-                //     let light_ray = Ray::new(intersection_point, light_direction);
-
-                //     if self.object_intersection(&light_ray).is_none() {
-                // 	// lambertian code
-                // 	let intensity = f64::abs(light_direction.dot(surface_normal));
-                // 	let color_value = (intensity * 255.0) as u8;
-                // 	color += Spectrum::new(color_value, color_value, color_value);
-                //     }
-                // }
+                1 => {
+                    // direct lighting
+                    unimplemented!()
+                }
+                _ => {
+                    // global illumination
+                    unimplemented!()
+                }
             }
-            None => Spectrum::new(0, 0, 0),
+        // for point_light in self.lights.iter() {
+        //     let light_direction = (point_light.position - intersection_point).normalized();
+        //     let light_ray = Ray::new(intersection_point, light_direction);
+
+        //     if self.object_intersection(&light_ray).is_none() {
+        // 	// lambertian code
+        // 	let intensity = f64::abs(light_direction.dot(surface_normal));
+        // 	let color_value = (intensity * 255.0) as u8;
+        // 	color += Spectrum::new(color_value, color_value, color_value);
+        //     }
+        // }
+        } else {
+            Spectrum::new(0, 0, 0)
         }
     }
 
