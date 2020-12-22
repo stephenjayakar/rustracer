@@ -4,16 +4,14 @@ use std::ops::{Add, Sub};
 pub struct Ray {
     pub origin: Point,
     pub direction: Vector,
-    pub bounces_left: u32,
 }
 
 impl Ray {
     // normalizes the direction vector
-    pub fn new(origin: Point, direction: Vector, bounces_left: u32) -> Ray {
+    pub fn new(origin: Point, direction: Vector) -> Ray {
         Ray {
             origin,
             direction: direction.normalized(),
-            bounces_left,
         }
     }
 
