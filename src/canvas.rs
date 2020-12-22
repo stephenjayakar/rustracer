@@ -12,8 +12,10 @@ use std::time::Duration;
 
 use crate::common::Spectrum;
 
-// Essentially just a wrapper around SDL2's wrapper.
-// - hopefully should make it easy to change out the internal implementation.
+const REFRESH_RATE: u64 = 1000 / 30;
+
+/// Mostly contains concurrency primitives to properly wrap
+/// around SDL2 context.
 pub struct Canvas {
     receiver: Receiver<DrawPixelMessage>,
     sender: Sender<DrawPixelMessage>,
@@ -33,6 +35,7 @@ impl Canvas {
             height,
         }
     }
+
     /// Starts a new canvas context that takes over the main thread.
     pub fn start(&mut self) {
         let sdl_context = sdl2::init().unwrap();
@@ -76,7 +79,7 @@ impl Canvas {
                     .expect("failed to draw rectangle");
             }
             canvas.present();
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(REFRESH_RATE));
         }
     }
 
