@@ -1,4 +1,5 @@
-use crate::primitives::{Point,  Ray, Spectrum, Vector};
+use crate::common::Spectrum;
+use crate::primitives::{Point, Ray, Vector};
 
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
@@ -32,38 +33,36 @@ pub struct Plane {
 
 impl Material {
     pub fn new(bsdf: BSDF, reflectance: Spectrum, emittance: Spectrum) -> Material {
-	Material {
-	    bsdf,
-	    reflectance,
-	    emittance,
-	}
+        Material {
+            bsdf,
+            reflectance,
+            emittance,
+        }
     }
 
     pub fn sample_bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
-	match self.bsdf {
-	    BSDF::Diffuse => {
-		self.reflectance * (1.0 / std::f64::consts::PI)
-	    }
-	}
+        match self.bsdf {
+            BSDF::Diffuse => self.reflectance * (1.0 / std::f64::consts::PI),
+        }
     }
 
     pub fn bounce(&self, wi: Vector) -> Vector {
-	match self.bsdf {
-	    BSDF::Diffuse => {
-		// return random vector
-	    }
-	}
-	unimplemented!();
+        match self.bsdf {
+            BSDF::Diffuse => {
+                // return random vector
+            }
+        }
+        unimplemented!();
     }
 }
 
 impl Sphere {
     pub fn new(center: Point, radius: f64, material: Material) -> Sphere {
-	Sphere {
-	    center,
-	    radius,
-	    material,
-	}
+        Sphere {
+            center,
+            radius,
+            material,
+        }
     }
 }
 
@@ -71,62 +70,60 @@ impl Object for Sphere {
     // sphere intersection from bheisler
     // returns intersection distance
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-	let l: Vector = self.center - ray.origin;
-	let adj = l.dot(ray.direction);
-	let d2 = l.dot(l) - (adj * adj);
-	let radius2 = self.radius * self.radius;
-	if d2 > radius2 {
+        let l: Vector = self.center - ray.origin;
+        let adj = l.dot(ray.direction);
+        let d2 = l.dot(l) - (adj * adj);
+        let radius2 = self.radius * self.radius;
+        if d2 > radius2 {
             return None;
-	}
-	let thc = (radius2 - d2).sqrt();
-	let t0 = adj - thc;
-	let t1 = adj + thc;
+        }
+        let thc = (radius2 - d2).sqrt();
+        let t0 = adj - thc;
+        let t1 = adj + thc;
 
-	if t0 < 0.0 && t1 < 0.0 {
+        if t0 < 0.0 && t1 < 0.0 {
             return None;
-	}
+        }
 
-	let distance = if t0 < t1 { t0 } else { t1 };
-	Some(distance)
+        let distance = if t0 < t1 { t0 } else { t1 };
+        Some(distance)
     }
 
     fn surface_normal(&self, point: Point) -> Vector {
-	(point - self.center).normalized()
+        (point - self.center).normalized()
     }
 
     fn material(&self) -> &Material {
-	&self.material
+        &self.material
     }
 }
 
 impl Plane {
     pub fn new(point: Point, normal: Vector, material: Material) -> Plane {
-	Plane {
-	    point,
-	    normal,
-	    material,
-	}
+        Plane {
+            point,
+            normal,
+            material,
+        }
     }
 }
 
 impl Object for Plane {
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-	let d = (self.point - ray.origin).dot(self.normal) /
-	    ray.direction.dot(self.normal);
-	if d > 0.0 {
-	    Some(d)
-	}
-	else {
-	    None
-	}
+        let d = (self.point - ray.origin).dot(self.normal) / ray.direction.dot(self.normal);
+        if d > 0.0 {
+            Some(d)
+        } else {
+            None
+        }
     }
 
     fn surface_normal(&self, _point: Point) -> Vector {
-	self.normal
+        self.normal
     }
 
     fn material(&self) -> &Material {
-	&self.material
+        &self.material
     }
 }
 
@@ -135,14 +132,14 @@ mod tests {
     use super::*;
     #[test]
     fn sphere_intersection() {
-	let origin = Point::new(0.0, 0.0, 0.0);
-	let direction = Vector::new_normalized(0.0, 0.0, -1.0);
-	let ray = Ray::new(&origin, &direction);
-	let sphere = Sphere::new(Point::new(0.0, 0.0, -4.0), 2.0);
-	assert!(sphere.intersect(&ray) != None);
+        let origin = Point::new(0.0, 0.0, 0.0);
+        let direction = Vector::new_normalized(0.0, 0.0, -1.0);
+        let ray = Ray::new(&origin, &direction);
+        let sphere = Sphere::new(Point::new(0.0, 0.0, -4.0), 2.0);
+        assert!(sphere.intersect(&ray) != None);
 
-	let vector_that_misses = Vector::new_normalized(3.0, 0.0, -4.0);
-	let ray_that_misses = Ray::new(&origin, &vector_that_misses);
-	assert!(sphere.intersect(&ray_that_misses) == None);
+        let vector_that_misses = Vector::new_normalized(3.0, 0.0, -4.0);
+        let ray_that_misses = Ray::new(&origin, &vector_that_misses);
+        assert!(sphere.intersect(&ray_that_misses) == None);
     }
 }
