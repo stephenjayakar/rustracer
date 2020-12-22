@@ -1,4 +1,5 @@
 use std::env;
+use std::thread;
 
 extern crate sdl2;
 use sdl2::event::Event;
@@ -207,6 +208,15 @@ impl Raytracer {
             }
         }
     }
+
+    fn start(&'static mut self) {
+        thread::spawn(move || {
+            self.render();
+            loop {}
+        });
+        self.canvas.start();
+        loop {}
+    }
 }
 
 fn parse_args(args: Vec<String>) -> Option<(u32, u32)> {
@@ -239,6 +249,5 @@ fn main() {
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
     let mut raytracer = Raytracer::new(config, Scene::new());
-    raytracer.render();
-    loop {}
+    raytracer.start();
 }
