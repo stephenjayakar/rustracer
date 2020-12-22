@@ -1,5 +1,3 @@
-extern crate sdl2;
-
 use std::ops::{Add, Sub};
 
 #[derive(Clone, Copy, Debug)]
