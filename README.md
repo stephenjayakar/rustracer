@@ -17,6 +17,13 @@ brew install sdl2
 cargo run
 ```
 
+## Windows
+
+```
+Good fucking luck.
+dm me if you get it
+```
+
 # dependencies
 
 * sdl2
@@ -27,3 +34,5 @@ cargo run
 * scratchapixel
 * pbrt
 * cs-184 at Berkeley
+* my brain
+* my hopes and dreams
