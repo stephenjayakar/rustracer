@@ -4,19 +4,11 @@ extern crate sdl2;
 
 mod canvas;
 mod common;
-mod objects;
-mod primitives;
+mod scene;
 
 use canvas::Canvas;
-use common::Spectrum;
-use objects::{Material, Object, Plane, Sphere, BSDF};
-use primitives::{Point, Ray, Vector};
-
-const DEFAULT_SCREEN_WIDTH: u32 = 1200;
-const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
-const EPS: f64 = 0.0000001;
-
-const GENERIC_ERROR: &str = "Something went wrong, sorry!";
+use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
+use scene::{Point, Ray, Scene, Vector};
 
 struct Config {
     screen_width: u32,
@@ -37,93 +29,47 @@ impl Config {
     }
 }
 
-struct Scene {
-    planes: Vec<Plane>,
-    spheres: Vec<Sphere>,
+struct Raytracer {
+    config: Config,
+    canvas: Canvas,
+    scene: Scene,
 }
 
-struct RayIntersection<'a> {
-    distance: f64,
-    object: &'a dyn Object,
-}
-
-impl Scene {
-    fn new() -> Scene {
-        let red_diffuse_material = Material::new(
-            BSDF::Diffuse,
-            Spectrum::new(100, 0, 0),
-            Spectrum::new(0, 0, 0),
-        );
-        let grey_diffuse_material = Material::new(
-            BSDF::Diffuse,
-            Spectrum::new(50, 50, 50),
-            Spectrum::new(0, 0, 0),
-        );
-        let blue_light_material = Material::new(
-            BSDF::Diffuse,
-            Spectrum::new(0, 0, 100),
-            Spectrum::new(0, 0, 100),
-        );
-        let spheres = vec![
-            Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(5.0, 10.0, -14.0), 2.0, blue_light_material),
-        ];
-        let mut planes = Vec::new();
-        let plane = Plane::new(
-            Point::new(0.0, 10.0, 0.0),
-            Vector::new(0.0, -1.0, 0.0),
-            grey_diffuse_material,
-        );
-        planes.push(plane);
-
-        Scene { planes, spheres }
-    }
-
-    // allows indexing across multiple object data structures
-    fn get_object_by_index(&self, index: usize) -> &dyn Object {
-        let planes_len = self.planes.len();
-        let spheres_len = self.spheres.len();
-
-        if index < planes_len {
-            self.planes.get(index).expect(GENERIC_ERROR)
-        } else if index < planes_len + spheres_len {
-            self.spheres.get(index - planes_len).expect(GENERIC_ERROR)
-        } else {
-            panic!("index out of range of scene");
+impl Raytracer {
+    fn new(config: Config) -> Raytracer {
+        let canvas = Canvas::new(config.screen_width, config.screen_height);
+        Raytracer {
+            config,
+            canvas,
+            scene: Scene::new_preset(),
         }
     }
 
-    fn num_objects(&self) -> usize {
-        self.planes.len() + self.spheres.len()
-    }
+    pub fn render(&mut self) {
+        // start rendering
+        // ray casting algorithm
+        let x_width = 2.0 * f64::tan(self.config.fov / 2.0);
+        let y_width = 2.0 * f64::tan(self.config.fov / 2.0);
 
-    fn object_intersection(&self, ray: &Ray) -> Option<RayIntersection> {
-        let mut min_dist = f64::INFINITY;
-        let mut min_object = None;
-        for i in 0..self.num_objects() {
-            let object = self.get_object_by_index(i);
-            if let Some(d) = object.intersect(ray) {
-                if d < min_dist {
-                    min_dist = d;
-                    min_object = Some(object);
-                }
+        let x_step = x_width / (self.config.screen_width as f64);
+        let x_start = -x_width / 2.0;
+        let y_step = y_width / (self.config.screen_height as f64);
+        let y_start = y_width / 2.0;
+
+        for i in 0..self.config.screen_width {
+            for j in 0..self.config.screen_height {
+                let x_component = x_start + x_step * (i as f64);
+                let y_component = y_start - y_step * (j as f64);
+                let vector = Vector::new(x_component, y_component, -1.0);
+                let ray = Ray::new(self.config.origin, vector);
+                let color = self.cast_ray(&ray, 0);
+                self.canvas.draw_pixel(i, j, color);
             }
         }
-        match min_object {
-            Some(object) => Some(RayIntersection {
-                object,
-                distance: min_dist,
-            }),
-            None => None,
-        }
     }
 
-    // for a ray, estimate global illumination
-    fn cast_ray(&self, ray: &Ray) -> Spectrum {
-        match self.object_intersection(ray) {
+    fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
+        match self.scene.intersect(ray) {
             Some(ray_intersection) => {
                 let object = ray_intersection.object;
                 let min_dist = ray_intersection.distance;
@@ -132,7 +78,6 @@ impl Scene {
                 let surface_normal: Vector = object.surface_normal(intersection_point);
                 intersection_point = intersection_point + surface_normal.scale(EPS);
 
-                let bounces_left = ray.bounces_left;
                 let emittance = object.material().emittance;
                 match bounces_left {
                     0 => {
@@ -161,46 +106,6 @@ impl Scene {
                 // }
             }
             None => Spectrum::new(0, 0, 0),
-        }
-    }
-}
-
-struct Raytracer {
-    config: Config,
-    canvas: Canvas,
-    scene: Scene,
-}
-
-impl Raytracer {
-    fn new(config: Config, scene: Scene) -> Raytracer {
-        let canvas = Canvas::new(config.screen_width, config.screen_height);
-        Raytracer {
-            config,
-            canvas,
-            scene,
-        }
-    }
-
-    fn render(&mut self) {
-        // start rendering
-        // ray casting algorithm
-        let x_width = 2.0 * f64::tan(self.config.fov / 2.0);
-        let y_width = 2.0 * f64::tan(self.config.fov / 2.0);
-
-        let x_step = x_width / (self.config.screen_width as f64);
-        let x_start = -x_width / 2.0;
-        let y_step = y_width / (self.config.screen_height as f64);
-        let y_start = y_width / 2.0;
-
-        for i in 0..self.config.screen_width {
-            for j in 0..self.config.screen_height {
-                let x_component = x_start + x_step * (i as f64);
-                let y_component = y_start - y_step * (j as f64);
-                let vector = Vector::new(x_component, y_component, -1.0);
-                let ray = Ray::new(self.config.origin, vector, 0);
-                let color = self.scene.cast_ray(&ray);
-                self.canvas.draw_pixel(i, j, color);
-            }
         }
     }
 
@@ -239,6 +144,6 @@ fn main() {
 
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
-    let mut raytracer = Raytracer::new(config, Scene::new());
+    let mut raytracer = Raytracer::new(config);
     raytracer.start();
 }
