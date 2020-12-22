@@ -126,20 +126,3 @@ impl Object for Plane {
         &self.material
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     #[test]
-//     fn sphere_intersection() {
-//         let origin = Point::new(0.0, 0.0, 0.0);
-//         let direction = Vector::new_normalized(0.0, 0.0, -1.0);
-//         let ray = Ray::new(&origin, &direction);
-//         let sphere = Sphere::new(Point::new(0.0, 0.0, -4.0), 2.0);
-//         assert!(sphere.intersect(&ray) != None);
-
-//         let vector_that_misses = Vector::new_normalized(3.0, 0.0, -4.0);
-//         let ray_that_misses = Ray::new(&origin, &vector_that_misses);
-//         assert!(sphere.intersect(&ray_that_misses) == None);
-//     }
-// }
