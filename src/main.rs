@@ -45,27 +45,32 @@ impl Raytracer {
         }
     }
 
+    /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
+    /// `Spectrum` value to the `Canvas`.
     pub fn render(&mut self) {
-        // start rendering
-        // ray casting algorithm
-        let x_width = 2.0 * f64::tan(self.config.fov / 2.0);
-        let y_width = 2.0 * f64::tan(self.config.fov / 2.0);
-
-        let x_step = x_width / (self.config.screen_width as f64);
-        let x_start = -x_width / 2.0;
-        let y_step = y_width / (self.config.screen_height as f64);
-        let y_start = y_width / 2.0;
-
         for i in 0..self.config.screen_width {
             for j in 0..self.config.screen_height {
-                let x_component = x_start + x_step * (i as f64);
-                let y_component = y_start - y_step * (j as f64);
-                let vector = Vector::new(x_component, y_component, -1.0);
+                let vector = self.screen_to_world(i, j);
                 let ray = Ray::new(self.config.origin, vector);
                 let color = self.cast_ray(&ray, 0);
                 self.canvas.draw_pixel(i, j, color);
             }
         }
+    }
+
+    /// Scratchapixel's simplified camera -> world direction conversion.  Gotta revisit this
+    /// when we want to be able to move the camera / understand wtf is going on.
+    fn screen_to_world(&self, x: u32, y: u32) -> Vector {
+        let screen_width = self.config.screen_width as f64;
+        let screen_height = self.config.screen_height as f64;
+        let (x, y) = (x as f64, y as f64);
+        let aspect_ratio = screen_width / screen_height;
+        let x_component = (2.0 * ((x + 0.5) / screen_width) - 1.0)
+            * f64::tan(self.config.fov / 2.0)
+            * aspect_ratio;
+        let y_component =
+            -(2.0 * ((y + 0.5) / screen_height) - 1.0) * f64::tan(self.config.fov / 2.0);
+        Vector::new_normalized(x_component, y_component, -1.0)
     }
 
     fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
