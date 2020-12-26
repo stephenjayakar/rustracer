@@ -40,7 +40,7 @@ impl Material {
         }
     }
 
-    pub fn sample_bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
+    pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
         match self.bsdf {
             BSDF::Diffuse => self.reflectance * (1.0 / std::f64::consts::PI),
         }

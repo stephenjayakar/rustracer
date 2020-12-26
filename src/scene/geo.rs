@@ -71,6 +71,24 @@ impl Vector {
 
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
         Vector::new(x, y, z).normalized()
+	}
+
+    /// Basically copied this from my 184 project, as the naive way that I was going
+    /// to implement was biased towards vectors going towards the normal.  Oops.
+    /// TODO: Figure out how this works.
+    pub fn random_hemisphere(normal: Vector) -> Vector {
+        // creating a random vector in object space
+        let xi1 = fastrand::f64();
+        let xi2 = fastrand::f64();
+
+        let theta = f64::acos(xi1);
+        let phi = 2.0 * std::f64::consts::PI * xi2;
+        let xs = f64::sin(theta) * f64::cos(phi);
+        let ys = f64::sin(theta) * f64::sin(phi);
+        let zs = f64::cos(theta);
+        // TODO: transform with normal
+
+        Vector::new(xs, ys, zs)
     }
 
     pub fn norm(&self) -> f64 {
