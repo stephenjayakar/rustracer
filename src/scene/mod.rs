@@ -44,7 +44,7 @@ impl Scene {
             // Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
             // Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, red_diffuse_material),
             // Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(4.0, 4.0, -10.0), 2.0, blue_light_material),
+            Sphere::new(Point::new(4.0, 4.0, -20.0), 2.0, blue_light_material),
         ];
         let mut planes = Vec::new();
         // let plane = Plane::new(

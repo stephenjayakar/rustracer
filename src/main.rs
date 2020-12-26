@@ -67,11 +67,17 @@ impl Raytracer {
         let fov = self.config.fov;
         let half_fov = fov * 0.5;
 
-        let theta = -half_fov + (fov * iw);
-        let phi = -half_fov + (fov * jh);
+        // let theta = -half_fov + (fov * iw);
+        // let phi = -half_fov + (fov * jh);
 
-        let xi = f64::sin(theta);
-        let yi = f64::sin(phi);
+        // let xi = f64::sin(theta);
+        // let yi = f64::sin(phi);
+
+        let start = f64::sin(-half_fov);
+        let total = -2.0 * start;
+        let xi = start + iw * total;
+        let yi = -start - jh * total;
+
         let direction = Vector::new_normalized(xi, yi, -1.0);
         direction
     }
