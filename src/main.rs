@@ -56,13 +56,13 @@ impl Raytracer {
                 self.canvas.draw_pixel(i, j, color);
             }
         }
-        self.canvas.draw_pixel(10, 10, Spectrum::new(255, 255, 0));
     }
 
     fn screen_to_world(&self, i: u32, j: u32) -> Vector {
+        let z = 2.0;
         let (iw, jh) = (
-            (i as f64) / (self.config.screen_width as f64),
-            j as f64 / (self.config.screen_height as f64),
+            (i as f64 + 0.5) / (self.config.screen_width as f64),
+            (j as f64 + 0.5) / (self.config.screen_height as f64),
         );
         let fov = self.config.fov;
         let half_fov = fov * 0.5;
@@ -73,12 +73,12 @@ impl Raytracer {
         // let xi = f64::sin(theta);
         // let yi = f64::sin(phi);
 
-        let start = f64::sin(-half_fov);
+        let start = f64::sin(-half_fov) * z;
         let total = -2.0 * start;
         let xi = start + iw * total;
         let yi = -start - jh * total;
 
-        let direction = Vector::new_normalized(xi, yi, -1.0);
+        let direction = Vector::new_normalized(xi, yi, -z);
         direction
     }
 
