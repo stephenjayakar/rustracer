@@ -56,21 +56,24 @@ impl Raytracer {
                 self.canvas.draw_pixel(i, j, color);
             }
         }
+        self.canvas.draw_pixel(10, 10, Spectrum::new(255, 255, 0));
     }
 
-    /// Scratchapixel's simplified camera -> world direction conversion.  Gotta revisit this
-    /// when we want to be able to move the camera / understand wtf is going on.
-    fn screen_to_world(&self, x: u32, y: u32) -> Vector {
-        let screen_width = self.config.screen_width as f64;
-        let screen_height = self.config.screen_height as f64;
-        let (x, y) = (x as f64, y as f64);
-        let aspect_ratio = screen_width / screen_height;
-        let x_component = (2.0 * ((x + 0.5) / screen_width) - 1.0)
-            * f64::tan(self.config.fov / 2.0)
-            * aspect_ratio;
-        let y_component =
-            -(2.0 * ((y + 0.5) / screen_height) - 1.0) * f64::tan(self.config.fov / 2.0);
-        Vector::new_normalized(x_component, y_component, -1.0)
+    fn screen_to_world(&self, i: u32, j: u32) -> Vector {
+        let (iw, jh) = (
+            (i as f64) / (self.config.screen_width as f64),
+            j as f64 / (self.config.screen_height as f64),
+        );
+        let fov = self.config.fov;
+        let half_fov = fov * 0.5;
+
+        let theta = -half_fov + (fov * iw);
+        let phi = -half_fov + (fov * jh);
+
+        let xi = f64::sin(theta);
+        let yi = f64::sin(phi);
+        let direction = Vector::new_normalized(xi, yi, -1.0);
+        direction
     }
 
     fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
