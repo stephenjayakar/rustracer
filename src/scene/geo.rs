@@ -1,3 +1,5 @@
+extern crate nalgebra as na;
+
 use std::ops::{Add, Sub};
 
 #[derive(Clone, Copy, Debug)]
@@ -23,22 +25,34 @@ impl Ray {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Point {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 impl Point {
     pub fn new(x: f64, y: f64, z: f64) -> Point {
         Point { x, y, z }
     }
+
+    pub fn x(&self) -> f64 {
+        self.x
+    }
+
+    pub fn y(&self) -> f64 {
+        self.y
+    }
+
+    pub fn z(&self) -> f64 {
+        self.z
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vector {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 fn norm(x: f64, y: f64, z: f64) -> f64 {
@@ -79,6 +93,18 @@ impl Vector {
 
     pub fn scale(&self, scalar: f64) -> Vector {
         Vector::new(scalar * self.x, scalar * self.y, scalar * self.z)
+    }
+
+    pub fn x(&self) -> f64 {
+        self.x
+    }
+
+    pub fn y(&self) -> f64 {
+        self.y
+    }
+
+    pub fn z(&self) -> f64 {
+        self.z
     }
 }
 

@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 crossbeam-channel = "0.5.0"
+nalgebra = "0.23.2"
 sdl2 = "0.34.2"
