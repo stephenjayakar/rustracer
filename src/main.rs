@@ -45,22 +45,12 @@ impl Raytracer {
         }
     }
 
+    /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
+    /// `Spectrum` value to the `Canvas`.
     pub fn render(&mut self) {
-        // start rendering
-        // ray casting algorithm
-        let x_width = 2.0 * f64::tan(self.config.fov / 2.0);
-        let y_width = 2.0 * f64::tan(self.config.fov / 2.0);
-
-        let x_step = x_width / (self.config.screen_width as f64);
-        let x_start = -x_width / 2.0;
-        let y_step = y_width / (self.config.screen_height as f64);
-        let y_start = y_width / 2.0;
-
         for i in 0..self.config.screen_width {
             for j in 0..self.config.screen_height {
-                let x_component = x_start + x_step * (i as f64);
-                let y_component = y_start - y_step * (j as f64);
-                let vector = Vector::new(x_component, y_component, -1.0);
+                let vector = self.screen_to_world(i, j);
                 let ray = Ray::new(self.config.origin, vector);
                 let color = self.cast_ray(&ray, 0);
                 self.canvas.draw_pixel(i, j, color);
@@ -68,44 +58,63 @@ impl Raytracer {
         }
     }
 
+    /// Algorithm to covert pixel positions in screen-space to a 3D Vector in world-space.
+    /// Assumes the camera is pointing in -z at the origin.
+    fn screen_to_world(&self, i: u32, j: u32) -> Vector {
+        let z = 2.0;
+        let (iw, jh) = (
+            (i as f64 + 0.5) / (self.config.screen_width as f64),
+            (j as f64 + 0.5) / (self.config.screen_height as f64),
+        );
+        let fov = self.config.fov;
+        let half_fov = fov * 0.5;
+
+        let start = f64::sin(-half_fov) * z;
+        let total = -2.0 * start;
+        let xi = start + iw * total;
+        let yi = -start - jh * total;
+
+        let direction = Vector::new_normalized(xi, yi, -z);
+        direction
+    }
+
     fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
-        match self.scene.intersect(ray) {
-            Some(ray_intersection) => {
-                let object = ray_intersection.object;
-                let min_dist = ray_intersection.distance;
-                let mut intersection_point: Point = ray.get_intersection_point(min_dist);
-                // bumping the point a little out of the object to prevent self-collision
-                let surface_normal: Vector = object.surface_normal(intersection_point);
-                intersection_point = intersection_point + surface_normal.scale(EPS);
+        if let Some(ray_intersection) = self.scene.intersect(ray) {
+            let object = ray_intersection.object;
+            let min_dist = ray_intersection.distance;
+            let mut intersection_point: Point = ray.get_intersection_point(min_dist);
+            // bumping the point a little out of the object to prevent self-collision
+            let surface_normal: Vector = object.surface_normal(intersection_point);
+            intersection_point = intersection_point + surface_normal.scale(EPS);
 
-                let emittance = object.material().emittance;
-                match bounces_left {
-                    0 => {
-                        // zero bounce radiance
-                        emittance
-                    }
-                    1 => {
-                        // direct lighting
-                        unimplemented!()
-                    }
-                    _ => {
-                        // global illumination
-                        unimplemented!()
-                    }
+            let emittance = object.material().emittance;
+            match bounces_left {
+                0 => {
+                    // zero bounce radiance
+                    emittance
                 }
-                // for point_light in self.lights.iter() {
-                //     let light_direction = (point_light.position - intersection_point).normalized();
-                //     let light_ray = Ray::new(intersection_point, light_direction);
-
-                //     if self.object_intersection(&light_ray).is_none() {
-                // 	// lambertian code
-                // 	let intensity = f64::abs(light_direction.dot(surface_normal));
-                // 	let color_value = (intensity * 255.0) as u8;
-                // 	color += Spectrum::new(color_value, color_value, color_value);
-                //     }
-                // }
+                1 => {
+                    // direct lighting
+                    unimplemented!()
+                }
+                _ => {
+                    // global illumination
+                    unimplemented!()
+                }
             }
-            None => Spectrum::new(0, 0, 0),
+        // for point_light in self.lights.iter() {
+        //     let light_direction = (point_light.position - intersection_point).normalized();
+        //     let light_ray = Ray::new(intersection_point, light_direction);
+
+        //     if self.object_intersection(&light_ray).is_none() {
+        // 	// lambertian code
+        // 	let intensity = f64::abs(light_direction.dot(surface_normal));
+        // 	let color_value = (intensity * 255.0) as u8;
+        // 	color += Spectrum::new(color_value, color_value, color_value);
+        //     }
+        // }
+        } else {
+            Spectrum::new(0, 0, 0)
         }
     }
 
