@@ -1,5 +1,7 @@
 extern crate nalgebra as na;
 
+use na::geometry::Point3;
+
 use std::ops::{Add, Sub};
 
 #[derive(Clone, Copy, Debug)]
@@ -25,26 +27,26 @@ impl Ray {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Point {
-    x: f64,
-    y: f64,
-    z: f64,
+    p: na::geometry::Point3<f64>,
 }
 
 impl Point {
     pub fn new(x: f64, y: f64, z: f64) -> Point {
-        Point { x, y, z }
+        Point {
+            p: Point3::new(x, y, z),
+        }
     }
 
     pub fn x(&self) -> f64 {
-        self.x
+        self.p[0]
     }
 
     pub fn y(&self) -> f64 {
-        self.y
+        self.p[1]
     }
 
     pub fn z(&self) -> f64 {
-        self.z
+        self.p[2]
     }
 }
 
@@ -65,34 +67,28 @@ impl Vector {
     }
 
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
-        let mut vector = Vector::new(x, y, z);
-        vector.normalize();
-        vector
+        Vector::new(x, y, z).normalized()
     }
 
     pub fn norm(&self) -> f64 {
-        norm(self.x, self.y, self.z)
-    }
-
-    pub fn normalize(&mut self) {
-        let inverse_norm = 1.0 / self.norm();
-        self.x *= inverse_norm;
-        self.y *= inverse_norm;
-        self.z *= inverse_norm;
+        norm(self.x(), self.y(), self.z())
     }
 
     pub fn normalized(&self) -> Vector {
-        let mut return_vector = *self;
-        return_vector.normalize();
-        return_vector
+        let inverse_norm = 1.0 / self.norm();
+        let x = self.x() * inverse_norm;
+        let y = self.y() * inverse_norm;
+        let z = self.z() * inverse_norm;
+
+        Vector::new(x, y, z)
     }
 
     pub fn dot(&self, other_vector: Vector) -> f64 {
-        self.x * other_vector.x + self.y * other_vector.y + self.z * other_vector.z
+        self.x() * other_vector.x() + self.y() * other_vector.y() + self.z() * other_vector.z()
     }
 
     pub fn scale(&self, scalar: f64) -> Vector {
-        Vector::new(scalar * self.x, scalar * self.y, scalar * self.z)
+        Vector::new(scalar * self.x(), scalar * self.y(), scalar * self.z())
     }
 
     pub fn x(&self) -> f64 {
@@ -112,7 +108,11 @@ impl Sub for Point {
     type Output = Vector;
 
     fn sub(self, other: Point) -> Self::Output {
-        Vector::new(self.x - other.x, self.y - other.y, self.z - other.z)
+        Vector::new(
+            self.x() - other.x(),
+            self.y() - other.y(),
+            self.z() - other.z(),
+        )
     }
 }
 
@@ -120,7 +120,11 @@ impl Add<Vector> for Point {
     type Output = Point;
 
     fn add(self, other: Vector) -> Self::Output {
-        Point::new(self.x + other.x, self.y + other.y, self.z + other.z)
+        Point::new(
+            self.x() + other.x(),
+            self.y() + other.y(),
+            self.z() + other.z(),
+        )
     }
 }
 
@@ -128,7 +132,11 @@ impl Add for Vector {
     type Output = Vector;
 
     fn add(self, other: Vector) -> Self::Output {
-        Vector::new(self.x + other.x, self.y + other.y, self.z + other.z)
+        Vector::new(
+            self.x() + other.x(),
+            self.y() + other.y(),
+            self.z() + other.z(),
+        )
     }
 }
 
@@ -136,6 +144,10 @@ impl Sub for Vector {
     type Output = Vector;
 
     fn sub(self, other: Vector) -> Self::Output {
-        Vector::new(self.x - other.x, self.y - other.y, self.z - other.z)
+        Vector::new(
+            self.x() - other.x(),
+            self.y() - other.y(),
+            self.z() - other.z(),
+        )
     }
 }
