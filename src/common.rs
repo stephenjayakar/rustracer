@@ -64,15 +64,15 @@ impl Spectrum {
         Spectrum::to_u8(self.b)
     }
 
-    pub fn ri(&self) -> f64 {
+    fn ri(&self) -> f64 {
         Spectrum::to_intensity(self.r())
     }
 
-    pub fn gi(&self) -> f64 {
+    fn gi(&self) -> f64 {
         Spectrum::to_intensity(self.g())
     }
 
-    pub fn bi(&self) -> f64 {
+    fn bi(&self) -> f64 {
         Spectrum::to_intensity(self.b())
     }
 }

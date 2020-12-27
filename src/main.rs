@@ -114,7 +114,7 @@ impl Raytracer {
 
                         if !other_emittance.is_black() {
                             let color =
-                                emittance + (other_emittance * reflected * f64::abs(wi.z()));
+                                emittance + other_emittance * reflected;// * f64::abs(wi.z());
                             l += color;
                         } else {
                             l += emittance;
