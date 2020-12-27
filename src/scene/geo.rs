@@ -59,10 +59,6 @@ pub struct Vector {
     v: Vector3<f64>,
 }
 
-fn norm(x: f64, y: f64, z: f64) -> f64 {
-    f64::sqrt(f64::powi(x, 2) + f64::powi(y, 2) + f64::powi(z, 2))
-}
-
 impl Vector {
     pub fn new(x: f64, y: f64, z: f64) -> Vector {
         let v = Vector3::new(x, y, z);
@@ -78,24 +74,19 @@ impl Vector {
     }
 
     pub fn norm(&self) -> f64 {
-        norm(self.x(), self.y(), self.z())
+        self.v.norm()
     }
 
     pub fn normalized(&self) -> Vector {
-        let inverse_norm = 1.0 / self.norm();
-        let x = self.x() * inverse_norm;
-        let y = self.y() * inverse_norm;
-        let z = self.z() * inverse_norm;
-
-        Vector::new(x, y, z)
+        Vector::new_from_na(self.v.normalize())
     }
 
     pub fn dot(&self, other_vector: Vector) -> f64 {
-        self.x() * other_vector.x() + self.y() * other_vector.y() + self.z() * other_vector.z()
+        self.dot(other_vector)
     }
 
     pub fn scale(&self, scalar: f64) -> Vector {
-        Vector::new(scalar * self.x(), scalar * self.y(), scalar * self.z())
+        Vector::new_from_na(self.v * scalar)
     }
 
     pub fn x(&self) -> f64 {
