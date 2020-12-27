@@ -91,9 +91,9 @@ impl Vector {
         // make_coord_space from 184.  make it a function if we use it again
         // TODO: unsure if these clones are necessary
 		// special handling if normal is (0, 1, 0), as cross products will be undefined.
-		// if normal.y() < 1.0 + EPS && normal.y() > 1.0 - EPS {
-		// 	return Vector::new(xs, ys, zs);
-		// }
+		if normal.y() < 1.0 + EPS && normal.y() > 1.0 - EPS {
+			return Vector::new(xs, ys, zs);
+		}
 		// other behavior
         let mut z = normal.v.clone();
         let mut h = z.clone();
