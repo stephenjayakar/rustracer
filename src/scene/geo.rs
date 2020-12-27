@@ -1,6 +1,6 @@
 extern crate nalgebra as na;
 
-use na::base::Vector3;
+use na::base::{Matrix3, Vector3};
 use na::geometry::Point3;
 
 use std::ops::{Add, Sub};
@@ -71,7 +71,7 @@ impl Vector {
 
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
         Vector::new(x, y, z).normalized()
-	}
+    }
 
     /// Basically copied this from my 184 project, as the naive way that I was going
     /// to implement was biased towards vectors going towards the normal.  Oops.
@@ -86,9 +86,23 @@ impl Vector {
         let xs = f64::sin(theta) * f64::cos(phi);
         let ys = f64::sin(theta) * f64::sin(phi);
         let zs = f64::cos(theta);
-        // TODO: transform with normal
 
-        Vector::new(xs, ys, zs)
+        // make_coord_space from 184.  make it a function if we use it again
+        // TODO: unsure if these clones are necessary
+        let mut z = normal.v.clone();
+        let mut h = z.clone();
+        if f64::abs(h.x) <= f64::abs(h.y) && f64::abs(h.x) <= f64::abs(h.z) {
+            h.y = 1.0;
+        } else {
+            h.z = 1.0;
+        }
+
+        z = z.normalize();
+        let y = h.cross(&z).normalize();
+        let x = z.cross(&y).normalize();
+
+        let o2w = Matrix3::from_rows(&[x.transpose(), y.transpose(), z.transpose()]);
+        Vector::new_from_na(o2w * Vector3::new(xs, ys, zs))
     }
 
     pub fn norm(&self) -> f64 {
