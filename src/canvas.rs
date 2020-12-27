@@ -63,7 +63,10 @@ impl Canvas {
                         keycode: Some(Keycode::Escape),
                         ..
                     } => break 'running,
-                    _ => {}
+					Event::MouseButtonDown {
+						x, y, ..
+					} => println!("Mouse button down at coordinates ({}, {})", x, y),
+                    _ => {},
                 }
             }
             // process draw pixel messages

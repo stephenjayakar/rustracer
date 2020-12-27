@@ -14,20 +14,21 @@ pub struct Material {
 }
 
 pub trait Object {
+	/// Returns distance if intersection occurs.
     fn intersect(&self, ray: &Ray) -> Option<f64>;
     fn surface_normal(&self, point: Point) -> Vector;
     fn material(&self) -> &Material;
 }
 
 pub struct Sphere {
-    pub center: Point,
-    pub radius: f64,
+    center: Point,
+    radius: f64,
     material: Material,
 }
 
 pub struct Plane {
-    pub point: Point,
-    pub normal: Vector,
+    point: Point,
+    normal: Vector,
     material: Material,
 }
 
@@ -58,8 +59,7 @@ impl Sphere {
 }
 
 impl Object for Sphere {
-    // sphere intersection from bheisler
-    // returns intersection distance
+	/// Sphere intersection from bheisler.
     fn intersect(&self, ray: &Ray) -> Option<f64> {
         let l: Vector = self.center - ray.origin;
         let adj = l.dot(ray.direction);
@@ -109,7 +109,7 @@ impl Object for Plane {
         }
     }
 
-    fn surface_normal(&self, _point: Point) -> Vector {
+    fn surface_normal(&self, _: Point) -> Vector {
         self.normal
     }
 

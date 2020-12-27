@@ -3,7 +3,8 @@ extern crate nalgebra as na;
 use na::base::{Matrix3, Vector3};
 use na::geometry::Point3;
 
-use std::ops::{Add, Sub};
+use std::ops::{Add, Mul, Sub};
+use crate::common::EPS;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Ray {
@@ -21,7 +22,7 @@ impl Ray {
     }
 
     pub fn get_intersection_point(&self, scalar: f64) -> Point {
-        let scaled_vector = self.direction.scale(scalar);
+        let scaled_vector = self.direction * scalar;
         self.origin + scaled_vector
     }
 }
@@ -89,6 +90,11 @@ impl Vector {
 
         // make_coord_space from 184.  make it a function if we use it again
         // TODO: unsure if these clones are necessary
+		// special handling if normal is (0, 1, 0), as cross products will be undefined.
+		// if normal.y() < 1.0 + EPS && normal.y() > 1.0 - EPS {
+		// 	return Vector::new(xs, ys, zs);
+		// }
+		// other behavior
         let mut z = normal.v.clone();
         let mut h = z.clone();
         if f64::abs(h.x) <= f64::abs(h.y) && f64::abs(h.x) <= f64::abs(h.z) {
@@ -116,10 +122,6 @@ impl Vector {
 
     pub fn dot(&self, other_vector: Vector) -> f64 {
         self.v.dot(&other_vector.v)
-    }
-
-    pub fn scale(&self, scalar: f64) -> Vector {
-        Vector::new_from_na(self.v * scalar)
     }
 
     pub fn x(&self) -> f64 {
@@ -164,5 +166,12 @@ impl Sub for Vector {
 
     fn sub(self, other: Vector) -> Self::Output {
         Vector::new_from_na(self.v - other.v)
+    }
+}
+
+impl Mul<f64> for Vector {
+	type Output = Vector;
+    fn mul(self, other: f64) -> Vector {
+        Vector::new_from_na(self.v * other)
     }
 }

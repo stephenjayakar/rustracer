@@ -6,7 +6,7 @@ mod objects;
 pub use geo::{Point, Ray, Vector};
 use objects::{Material, Object, Plane, Sphere, BSDF};
 
-use crate::common::{Spectrum, EPS, GENERIC_ERROR};
+use crate::common::{Spectrum, GENERIC_ERROR};
 
 pub struct Scene {
     planes: Vec<Plane>,
@@ -44,7 +44,7 @@ impl Scene {
             Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
             Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, grey_diffuse_material),
             Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(4.0, 4.0, -15.0), 2.0, reddish_white_light_material),
+            Sphere::new(Point::new(4.0, 4.0, -12.0), 1.5, reddish_white_light_material),
         ];
         let mut planes = Vec::new();
         let plane = Plane::new(
