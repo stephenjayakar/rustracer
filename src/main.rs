@@ -101,7 +101,16 @@ impl Raytracer {
 
                     let reflected = object.material().bsdf(wi, wo);
                     let other_emittance = self.cast_ray(&bounced_ray, 0);
-                    emittance + (other_emittance * reflected * f64::abs(wi.z()))
+                    if !other_emittance.is_black() {
+                        let temp = other_emittance * reflected * f64::abs(wi.z());
+                        let color = emittance
+                            + (other_emittance * reflected * f64::abs(wi.z()))
+                                * 2.0
+                                * std::f64::consts::PI;
+                        color
+                    } else {
+                        emittance
+                    }
                 }
                 _ => {
                     // global illumination

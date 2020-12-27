@@ -15,6 +15,14 @@ pub struct Spectrum {
     b: u8,
 }
 
+fn color_to_intensity(color: u8) -> f64 {
+    color as f64 / 255.0
+}
+
+fn intensity_to_color(intensity: f64) -> u8 {
+    (intensity * 255.0) as u8
+}
+
 impl Spectrum {
     pub fn to_sdl2_color(&self) -> sdl2::pixels::Color {
         sdl2::pixels::Color::RGB(self.r, self.g, self.b)
@@ -23,13 +31,21 @@ impl Spectrum {
     pub fn new(r: u8, g: u8, b: u8) -> Spectrum {
         Spectrum { r, g, b }
     }
+
+    pub fn is_black(&self) -> bool {
+        self.r == 0 && self.g == 0 && self.b == 0
+    }
 }
 
-// note: this will panic on overflow.  be careful!
+// note: this will not panic on overflow.  be careful!
 impl Add for Spectrum {
     type Output = Spectrum;
     fn add(self, other: Spectrum) -> Self::Output {
-        Spectrum::new(self.r + other.r, self.g + other.g, self.b + other.b)
+        Spectrum::new(
+            self.r.saturating_add(other.r),
+            self.g.saturating_add(other.g),
+            self.b.saturating_add(other.b),
+        )
     }
 }
 
@@ -42,7 +58,21 @@ impl AddAssign for Spectrum {
 impl Mul for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: Spectrum) -> Self::Output {
-        Spectrum::new(self.r * other.r, self.g * other.g, self.b * other.b)
+        let (r, g, b) = (
+            color_to_intensity(self.r),
+            color_to_intensity(self.g),
+            color_to_intensity(self.b),
+        );
+        let (other_r, other_g, other_b) = (
+            color_to_intensity(other.r),
+            color_to_intensity(other.g),
+            color_to_intensity(other.b),
+        );
+        Spectrum::new(
+            intensity_to_color(r * other_r),
+            intensity_to_color(g * other_g),
+            intensity_to_color(b * other_b),
+        )
     }
 }
 

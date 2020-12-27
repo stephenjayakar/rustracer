@@ -26,18 +26,18 @@ impl Scene {
     pub fn new_preset() -> Scene {
         let red_diffuse_material = Material::new(
             BSDF::Diffuse,
-            Spectrum::new(100, 0, 0),
+            Spectrum::new(255, 0, 0),
             Spectrum::new(0, 0, 0),
         );
         let grey_diffuse_material = Material::new(
             BSDF::Diffuse,
-            Spectrum::new(50, 50, 50),
+            Spectrum::new(200, 200, 200),
             Spectrum::new(0, 0, 0),
         );
         let blue_light_material = Material::new(
             BSDF::Diffuse,
             Spectrum::new(0, 0, 100),
-            Spectrum::new(0, 0, 255),
+            Spectrum::new(90, 0, 255),
         );
         let spheres = vec![
             Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0, red_diffuse_material),
