@@ -48,8 +48,8 @@ impl Scene {
         ];
         let mut planes = Vec::new();
         let plane = Plane::new(
-            Point::new(0.0, 10.0, 0.0),
-            Vector::new(0.0, -1.0, 0.0),
+            Point::new(0.0, -5.0, 0.0),
+            Vector::new(0.0, 1.0, 0.0),
             grey_diffuse_material,
         );
         planes.push(plane);

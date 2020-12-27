@@ -10,30 +10,63 @@ pub const EPS: f64 = 0.0000001;
 // struct that is essentially a wrapper on top of SDL2::Color, but allows accumulation
 #[derive(Clone, Copy, Debug)]
 pub struct Spectrum {
-    r: u8,
-    g: u8,
-    b: u8,
-}
-
-fn color_to_intensity(color: u8) -> f64 {
-    color as f64 / 255.0
-}
-
-fn intensity_to_color(intensity: f64) -> u8 {
-    (intensity * 255.0) as u8
+    r: u32,
+    g: u32,
+    b: u32,
 }
 
 impl Spectrum {
     pub fn to_sdl2_color(&self) -> sdl2::pixels::Color {
-        sdl2::pixels::Color::RGB(self.r, self.g, self.b)
+        sdl2::pixels::Color::RGB(self.r(), self.g(), self.b())
     }
 
-    pub fn new(r: u8, g: u8, b: u8) -> Spectrum {
+    pub fn new(r: u32, g: u32, b: u32) -> Spectrum {
         Spectrum { r, g, b }
     }
 
     pub fn is_black(&self) -> bool {
         self.r == 0 && self.g == 0 && self.b == 0
+    }
+
+    fn to_u8(val: u32) -> u8 {
+        // maybe make this debug somehow?
+        if val > std::u8::MAX as u32 {
+            std::u8::MAX
+        } else {
+            val as u8
+        }
+    }
+
+    fn to_intensity(val: u8) -> f64 {
+        val as f64 / 255.0
+    }
+
+    fn to_color(intensity: f64) -> u32 {
+        (intensity * 255.0) as u32
+    }
+
+    pub fn r(&self) -> u8 {
+        Spectrum::to_u8(self.r)
+    }
+
+    pub fn g(&self) -> u8 {
+        Spectrum::to_u8(self.g)
+    }
+
+    pub fn b(&self) -> u8 {
+        Spectrum::to_u8(self.b)
+    }
+
+    pub fn ri(&self) -> f64 {
+        Spectrum::to_intensity(self.r())
+    }
+
+    pub fn gi(&self) -> f64 {
+        Spectrum::to_intensity(self.g())
+    }
+
+    pub fn bi(&self) -> f64 {
+        Spectrum::to_intensity(self.b())
     }
 }
 
@@ -41,11 +74,7 @@ impl Spectrum {
 impl Add for Spectrum {
     type Output = Spectrum;
     fn add(self, other: Spectrum) -> Self::Output {
-        Spectrum::new(
-            self.r.saturating_add(other.r),
-            self.g.saturating_add(other.g),
-            self.b.saturating_add(other.b),
-        )
+        Spectrum::new(self.r + other.r, self.g + other.g, self.b + other.b)
     }
 }
 
@@ -58,20 +87,10 @@ impl AddAssign for Spectrum {
 impl Mul for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: Spectrum) -> Self::Output {
-        let (r, g, b) = (
-            color_to_intensity(self.r),
-            color_to_intensity(self.g),
-            color_to_intensity(self.b),
-        );
-        let (other_r, other_g, other_b) = (
-            color_to_intensity(other.r),
-            color_to_intensity(other.g),
-            color_to_intensity(other.b),
-        );
         Spectrum::new(
-            intensity_to_color(r * other_r),
-            intensity_to_color(g * other_g),
-            intensity_to_color(b * other_b),
+            Spectrum::to_color(self.ri() * other.ri()),
+            Spectrum::to_color(self.gi() * other.gi()),
+            Spectrum::to_color(self.bi() * other.bi()),
         )
     }
 }

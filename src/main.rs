@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::env;
 
 extern crate sdl2;
@@ -94,23 +96,26 @@ impl Raytracer {
                     emittance
                 }
                 1 => {
-                    // direct lighting
-                    let wo = ray.direction;
-                    let wi = Vector::random_hemisphere(surface_normal);
-                    let bounced_ray = Ray::new(intersection_point, wi);
+                    let NUM_SAMPLES = 400;
+                    let mut L = Spectrum::new(0, 0, 0);
+                    for _ in 0..NUM_SAMPLES {
+                        // direct lighting
+                        let wo = ray.direction;
+                        let wi = Vector::random_hemisphere(surface_normal);
+                        let bounced_ray = Ray::new(intersection_point, wi);
 
-                    let reflected = object.material().bsdf(wi, wo);
-                    let other_emittance = self.cast_ray(&bounced_ray, 0);
-                    if !other_emittance.is_black() {
-                        let temp = other_emittance * reflected * f64::abs(wi.z());
-                        let color = emittance
-                            + (other_emittance * reflected * f64::abs(wi.z()))
-                                * 2.0
-                                * std::f64::consts::PI;
-                        color
-                    } else {
-                        emittance
+                        let reflected = object.material().bsdf(wi, wo);
+                        let other_emittance = self.cast_ray(&bounced_ray, 0);
+                        if !other_emittance.is_black() {
+                            let color =
+                                emittance + (other_emittance * reflected * f64::abs(wi.z()));
+                            L += color;
+                        } else {
+                            L += emittance;
+                        }
                     }
+                    // TODO: divide by num samples
+                    L * 2.0 * std::f64::consts::PI * (4.0 / NUM_SAMPLES as f64)
                 }
                 _ => {
                     // global illumination

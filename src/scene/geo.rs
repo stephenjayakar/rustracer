@@ -101,7 +101,8 @@ impl Vector {
         let y = h.cross(&z).normalize();
         let x = z.cross(&y).normalize();
 
-        let o2w = Matrix3::from_rows(&[x.transpose(), y.transpose(), z.transpose()]);
+        // let o2w = Matrix3::from_rows(&[x.transpose(), y.transpose(), z.transpose()]);
+        let o2w = Matrix3::from_columns(&[x, y, z]);
         Vector::new_from_na(o2w * Vector3::new(xs, ys, zs))
     }
 
