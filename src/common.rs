@@ -39,6 +39,13 @@ impl AddAssign for Spectrum {
     }
 }
 
+impl Mul for Spectrum {
+    type Output = Spectrum;
+    fn mul(self, other: Spectrum) -> Self::Output {
+        Spectrum::new(self.r * other.r, self.g * other.g, self.b * other.b)
+    }
+}
+
 impl Mul<f64> for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: f64) -> Self::Output {

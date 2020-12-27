@@ -45,15 +45,6 @@ impl Material {
             BSDF::Diffuse => self.reflectance * (1.0 / std::f64::consts::PI),
         }
     }
-
-    pub fn bounce(&self, wi: Vector) -> Vector {
-        match self.bsdf {
-            BSDF::Diffuse => {
-                // return random vector
-            }
-        }
-        unimplemented!();
-    }
 }
 
 impl Sphere {

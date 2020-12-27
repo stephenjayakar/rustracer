@@ -52,7 +52,7 @@ impl Raytracer {
             for j in 0..self.config.screen_height {
                 let vector = self.screen_to_world(i, j);
                 let ray = Ray::new(self.config.origin, vector);
-                let color = self.cast_ray(&ray, 0);
+                let color = self.cast_ray(&ray, 1);
                 self.canvas.draw_pixel(i, j, color);
             }
         }
@@ -95,7 +95,13 @@ impl Raytracer {
                 }
                 1 => {
                     // direct lighting
-                    unimplemented!()
+                    let wo = ray.direction;
+                    let wi = Vector::random_hemisphere(surface_normal);
+                    let bounced_ray = Ray::new(intersection_point, wi);
+
+                    let reflected = object.material().bsdf(wi, wo);
+                    let other_emittance = self.cast_ray(&bounced_ray, 0);
+                    emittance + (other_emittance * reflected * f64::abs(wi.z()))
                 }
                 _ => {
                     // global illumination
