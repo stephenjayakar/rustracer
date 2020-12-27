@@ -33,9 +33,12 @@ pub struct Point {
 
 impl Point {
     pub fn new(x: f64, y: f64, z: f64) -> Point {
-        Point {
-            p: Point3::new(x, y, z),
-        }
+        let p = Point3::new(x, y, z);
+        Point::new_from_na(p)
+    }
+
+    fn new_from_na(p: Point3<f64>) -> Point {
+        Point { p }
     }
 
     pub fn x(&self) -> f64 {
@@ -62,9 +65,12 @@ fn norm(x: f64, y: f64, z: f64) -> f64 {
 
 impl Vector {
     pub fn new(x: f64, y: f64, z: f64) -> Vector {
-        Vector {
-            v: Vector3::new(x, y, z),
-        }
+        let v = Vector3::new(x, y, z);
+        Vector::new_from_na(v)
+    }
+
+    fn new_from_na(v: Vector3<f64>) -> Vector {
+        Vector { v }
     }
 
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
@@ -109,11 +115,7 @@ impl Sub for Point {
     type Output = Vector;
 
     fn sub(self, other: Point) -> Self::Output {
-        Vector::new(
-            self.x() - other.x(),
-            self.y() - other.y(),
-            self.z() - other.z(),
-        )
+        Vector::new_from_na(self.p - other.p)
     }
 }
 
@@ -121,11 +123,7 @@ impl Add<Vector> for Point {
     type Output = Point;
 
     fn add(self, other: Vector) -> Self::Output {
-        Point::new(
-            self.x() + other.x(),
-            self.y() + other.y(),
-            self.z() + other.z(),
-        )
+        Point::new_from_na(self.p + other.v)
     }
 }
 
@@ -133,11 +131,7 @@ impl Add for Vector {
     type Output = Vector;
 
     fn add(self, other: Vector) -> Self::Output {
-        Vector::new(
-            self.x() + other.x(),
-            self.y() + other.y(),
-            self.z() + other.z(),
-        )
+        Vector::new_from_na(self.v + other.v)
     }
 }
 
@@ -145,10 +139,6 @@ impl Sub for Vector {
     type Output = Vector;
 
     fn sub(self, other: Vector) -> Self::Output {
-        Vector::new(
-            self.x() - other.x(),
-            self.y() - other.y(),
-            self.z() - other.z(),
-        )
+        Vector::new_from_na(self.v - other.v)
     }
 }
