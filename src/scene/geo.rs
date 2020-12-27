@@ -1,5 +1,6 @@
 extern crate nalgebra as na;
 
+use na::base::Vector3;
 use na::geometry::Point3;
 
 use std::ops::{Add, Sub};
@@ -27,7 +28,7 @@ impl Ray {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Point {
-    p: na::geometry::Point3<f64>,
+    p: Point3<f64>,
 }
 
 impl Point {
@@ -52,9 +53,7 @@ impl Point {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vector {
-    x: f64,
-    y: f64,
-    z: f64,
+    v: Vector3<f64>,
 }
 
 fn norm(x: f64, y: f64, z: f64) -> f64 {
@@ -63,7 +62,9 @@ fn norm(x: f64, y: f64, z: f64) -> f64 {
 
 impl Vector {
     pub fn new(x: f64, y: f64, z: f64) -> Vector {
-        Vector { x, y, z }
+        Vector {
+            v: Vector3::new(x, y, z),
+        }
     }
 
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
@@ -92,15 +93,15 @@ impl Vector {
     }
 
     pub fn x(&self) -> f64 {
-        self.x
+        self.v[0]
     }
 
     pub fn y(&self) -> f64 {
-        self.y
+        self.v[1]
     }
 
     pub fn z(&self) -> f64 {
-        self.z
+        self.v[2]
     }
 }
 
