@@ -87,7 +87,6 @@ impl Raytracer {
 
     fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
         if let Some(ray_intersection) = self.scene.intersect(ray) {
-			// println!("made it");
             let object = ray_intersection.object;
             let min_dist = ray_intersection.distance;
             let mut intersection_point: Point = ray.get_intersection_point(min_dist);
@@ -112,7 +111,6 @@ impl Raytracer {
 
                         let reflected = object.material().bsdf(wi, wo);
                         let other_emittance = self.cast_ray(&bounced_ray, 0);
-						// println!("{:?}", wi);
 
                         if !other_emittance.is_black() {
                             let color =
@@ -123,9 +121,7 @@ impl Raytracer {
                         }
                     }
 					// TODO: figure out what's going on with num samples
-					// println!("{:?}, {:?}, {:?}", l, intersection_point, surface_normal);
 					l = l * 2.0 * std::f64::consts::PI;
-					// println!("{:?}", l);
                     l // * (4.0 / NUM_SAMPLES as f64)
                 }
                 _ => {
@@ -180,6 +176,8 @@ impl Raytracer {
         self.canvas.start();
     }
 
+	/// Helpful function to test a pixel's behavior.  Use this in combination
+	/// with the mouse_down pixel print implemented
 	fn test(&self) {
 		let i = 1189;//227;
 		let j = 855;//312;
@@ -217,6 +215,6 @@ fn main() {
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
     let mut raytracer = Raytracer::new(config);
-	raytracer.test();
+	// raytracer.test();
     raytracer.start();
 }
