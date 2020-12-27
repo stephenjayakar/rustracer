@@ -34,17 +34,17 @@ impl Scene {
             Spectrum::new(200, 200, 200),
             Spectrum::new(0, 0, 0),
         );
-        let blue_light_material = Material::new(
+        let reddish_white_light_material = Material::new(
             BSDF::Diffuse,
             Spectrum::new(0, 0, 100),
-            Spectrum::new(90, 0, 255),
+            Spectrum::new(200, 200, 255),
         );
         let spheres = vec![
             Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0, red_diffuse_material),
             Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
             Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, grey_diffuse_material),
             Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(4.0, 4.0, -15.0), 2.0, blue_light_material),
+            Sphere::new(Point::new(4.0, 4.0, -15.0), 2.0, reddish_white_light_material),
         ];
         let mut planes = Vec::new();
         let plane = Plane::new(

@@ -10,9 +10,9 @@ pub const EPS: f64 = 0.0000001;
 // struct that is essentially a wrapper on top of SDL2::Color, but allows accumulation
 #[derive(Clone, Copy, Debug)]
 pub struct Spectrum {
-    r: u32,
-    g: u32,
-    b: u32,
+    r: f32,
+    g: f32,
+    b: f32,
 }
 
 impl Spectrum {
@@ -21,16 +21,23 @@ impl Spectrum {
     }
 
     pub fn new(r: u32, g: u32, b: u32) -> Spectrum {
-        Spectrum { r, g, b }
+        Spectrum { r: r as f32,
+				   g: g as f32,
+				   b: b as f32 }
     }
+
+	fn new_f(r: f32, g: f32, b: f32) -> Spectrum {
+		Spectrum { r, g, b }
+	}
 
     pub fn is_black(&self) -> bool {
-        self.r == 0 && self.g == 0 && self.b == 0
+		let color = self.r + self.g + self.b;
+		color <= 0.0 + EPS as f32
     }
 
-    fn to_u8(val: u32) -> u8 {
+    fn to_u8(val: f32) -> u8 {
         // maybe make this debug somehow?
-        if val > std::u8::MAX as u32 {
+        if val > std::u8::MAX as f32 {
             std::u8::MAX
         } else {
             val as u8
@@ -74,7 +81,7 @@ impl Spectrum {
 impl Add for Spectrum {
     type Output = Spectrum;
     fn add(self, other: Spectrum) -> Self::Output {
-        Spectrum::new(self.r + other.r, self.g + other.g, self.b + other.b)
+        Spectrum::new_f(self.r + other.r, self.g + other.g, self.b + other.b)
     }
 }
 

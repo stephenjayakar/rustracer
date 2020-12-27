@@ -96,9 +96,9 @@ impl Raytracer {
                     emittance
                 }
                 1 => {
-                    let NUM_SAMPLES = 400;
-                    let mut L = Spectrum::new(0, 0, 0);
-                    for _ in 0..NUM_SAMPLES {
+                    let num_samples = 16;
+                    let mut l = Spectrum::new(0, 0, 0);
+                    for _ in 0..num_samples {
                         // direct lighting
                         let wo = ray.direction;
                         let wi = Vector::random_hemisphere(surface_normal);
@@ -109,13 +109,13 @@ impl Raytracer {
                         if !other_emittance.is_black() {
                             let color =
                                 emittance + (other_emittance * reflected * f64::abs(wi.z()));
-                            L += color;
+                            l += color;
                         } else {
-                            L += emittance;
+                            l += emittance;
                         }
                     }
-                    // TODO: divide by num samples
-                    L * 2.0 * std::f64::consts::PI * (4.0 / NUM_SAMPLES as f64)
+					// TODO: figure out what's going on with num samples
+                    l * 2.0 * std::f64::consts::PI// * (4.0 / NUM_SAMPLES as f64)
                 }
                 _ => {
                     // global illumination
@@ -138,8 +138,24 @@ impl Raytracer {
         }
     }
 
+	fn draw_axis(&mut self) {
+		let (start_x, start_y) = (10, 10);
+		let length = 15;
+		let x_axis_color = Spectrum::new(255, 0, 0);
+		let y_axis_color = Spectrum::new(0, 255, 0);
+
+		for j in 0..length {
+			self.canvas.draw_pixel(start_x, start_y + j, y_axis_color);
+		}
+
+		for i in 0..length {
+			self.canvas.draw_pixel(start_x + i, start_y + length, x_axis_color);
+		}
+	}
+
     fn start(&mut self) {
         self.render();
+		self.draw_axis();
         self.canvas.start();
     }
 }
