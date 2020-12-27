@@ -101,7 +101,7 @@ impl Raytracer {
                     emittance
                 }
                 1 => {
-                    let num_samples = 16;
+                    let num_samples = 32;
                     let mut l = Spectrum::new(0, 0, 0);
                     for _ in 0..num_samples {
                         // direct lighting
@@ -114,7 +114,7 @@ impl Raytracer {
 
                         if !other_emittance.is_black() {
                             let color =
-                                emittance + (other_emittance * reflected);// * f64::abs(wi.z()));
+                                emittance + (other_emittance * reflected * f64::abs(wi.z()));
                             l += color;
                         } else {
                             l += emittance;

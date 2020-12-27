@@ -91,6 +91,7 @@ impl Vector {
         // make_coord_space from 184.  make it a function if we use it again
         // TODO: unsure if these clones are necessary
 		// special handling if normal is (0, 1, 0), as cross products will be undefined.
+		// TODO: add handling for normal.z() being 1.0.
 		if normal.y() < 1.0 + EPS && normal.y() > 1.0 - EPS {
 			return Vector::new(xs, ys, zs);
 		}

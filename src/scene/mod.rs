@@ -29,6 +29,16 @@ impl Scene {
             Spectrum::new(255, 0, 0),
             Spectrum::new(0, 0, 0),
         );
+        let blue_diffuse_material = Material::new(
+            BSDF::Diffuse,
+            Spectrum::new(0, 0, 255),
+            Spectrum::new(0, 0, 0),
+        );
+        let green_diffuse_material = Material::new(
+            BSDF::Diffuse,
+            Spectrum::new(0, 255, 0),
+            Spectrum::new(0, 0, 0),
+        );
         let grey_diffuse_material = Material::new(
             BSDF::Diffuse,
             Spectrum::new(200, 200, 200),
@@ -40,20 +50,44 @@ impl Scene {
             Spectrum::new(200, 200, 255),
         );
         let spheres = vec![
-            Sphere::new(Point::new(0.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(5.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(-5.0, 0.0, -14.0), 2.0, grey_diffuse_material),
-            Sphere::new(Point::new(10.0, 0.0, -14.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(4.0, 4.0, -12.0), 1.5, reddish_white_light_material),
+            Sphere::new(Point::new(0.0, 0.0, -20.0), 2.0, red_diffuse_material),
+            Sphere::new(Point::new(5.0, 0.0, -20.0), 2.0, red_diffuse_material),
+            Sphere::new(Point::new(-5.0, 0.0, -20.0), 2.0, grey_diffuse_material),
+            Sphere::new(Point::new(10.0, 0.0, -20.0), 2.0, red_diffuse_material),
+            Sphere::new(Point::new(4.0, 4.0, -18.0), 1.5, reddish_white_light_material),
         ];
-        let mut planes = Vec::new();
-        let plane = Plane::new(
-            Point::new(0.0, -5.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            grey_diffuse_material,
-        );
-        planes.push(plane);
-
+        let planes = vec![
+			// bottom wall
+			Plane::new(
+				Point::new(0.0, -5.0, 0.0),
+				Vector::new(0.0, 1.0, 0.0),
+				grey_diffuse_material,
+			),
+			// left wall
+			Plane::new(
+				Point::new(-14.0, 0.0, 0.0),
+				Vector::new(1.0, 0.0, 0.0),
+				red_diffuse_material,
+			),
+			// right wall
+			Plane::new(
+				Point::new(14.0, 0.0, 0.0),
+				Vector::new(-1.0, 0.0, 0.0),
+				blue_diffuse_material,
+			),
+			// back wall
+			Plane::new(
+				Point::new(0.0, 0.0, -30.0),
+				Vector::new(0.0, 0.0, 1.0),
+				green_diffuse_material,
+			),
+			// top wall
+			Plane::new(
+				Point::new(0.0, 9.0, 0.0),
+				Vector::new(0.0, -1.0, 0.0),
+				grey_diffuse_material,
+			),
+		];
         Scene { planes, spheres }
     }
 
