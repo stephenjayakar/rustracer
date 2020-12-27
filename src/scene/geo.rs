@@ -82,7 +82,7 @@ impl Vector {
     }
 
     pub fn dot(&self, other_vector: Vector) -> f64 {
-        self.dot(other_vector)
+        self.v.dot(&other_vector.v)
     }
 
     pub fn scale(&self, scalar: f64) -> Vector {
