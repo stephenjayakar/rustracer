@@ -14,8 +14,7 @@ use canvas::Canvas;
 use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
 use scene::{Point, Ray, Scene, Vector};
 
-use std::time::{Duration, Instant};
-use std::thread;
+use std::time::Instant;
 
 struct Config {
     screen_width: u32,
