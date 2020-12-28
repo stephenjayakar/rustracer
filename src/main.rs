@@ -14,6 +14,9 @@ use canvas::Canvas;
 use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
 use scene::{Point, Ray, Scene, Vector};
 
+use std::time::{Duration, Instant};
+use std::thread;
+
 struct Config {
     screen_width: u32,
     screen_height: u32,
@@ -103,7 +106,7 @@ impl Raytracer {
                     emittance
                 }
                 1 => {
-                    let num_samples = 32;
+                    let num_samples = 64;
                     let mut l = Spectrum::black();
                     for _ in 0..num_samples {
                         // direct lighting
@@ -172,7 +175,10 @@ impl Raytracer {
 	}
 
     pub fn start(&self) {
+		let start = Instant::now();
         self.render();
+		let duration = start.elapsed();
+		println!("Rendering took: {:?}", duration);
 		self.draw_axis();
         self.canvas.start();
     }
@@ -215,7 +221,7 @@ fn main() {
 
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
-    let mut raytracer = Raytracer::new(config);
+    let raytracer = Raytracer::new(config);
 	// raytracer.test();
     raytracer.start();
 }
