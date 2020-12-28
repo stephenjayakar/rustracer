@@ -1,3 +1,0 @@
-/Users/ajay/Dropbox/programming/rustracer/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/Users/ajay/Dropbox/programming/rustracer/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/ajay/Dropbox/programming/rustracer/cmake-build-debug/CMakeFiles/rustracer.dir
