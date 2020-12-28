@@ -93,46 +93,50 @@ impl Raytracer {
 		intersection.object().material().emittance
 	}
 
-	// fn one_bounce_radiance_hemisphere() -> Spectrum {
-	// }
+	fn one_bounce_radiance_hemisphere(&self, intersection: &RayIntersection) -> Spectrum {
+        let object = intersection.object();
+        let min_dist = intersection.distance();
+		let ray = intersection.ray();
+        let mut intersection_point: Point = ray.get_intersection_point(min_dist);
+        // bumping the point a little out of the object to prevent self-collision
+        let surface_normal: Vector = object.surface_normal(intersection_point);
+        intersection_point = intersection_point + surface_normal * EPS;
+
+        let emittance = object.material().emittance;
+        let num_samples = 64;
+        let mut l = Spectrum::black();
+        for _ in 0..num_samples {
+            // direct lighting
+            let wo = ray.direction;
+            let wi = Vector::random_hemisphere(surface_normal);
+            let bounced_ray = Ray::new(intersection_point, wi);
+
+            let reflected = object.material().bsdf(wi, wo);
+            let other_emittance = self.cast_ray(bounced_ray, 0);
+
+            if !other_emittance.is_black() {
+                let color =
+                    emittance + other_emittance * reflected;// * f64::abs(wi.z());
+                l += color;
+            } else {
+                l += emittance;
+            }
+			// TODO: figure out what's going on with num samples
+			l = l * 2.0 * std::f32::consts::PI;
+		}
+		l // * (4.0 / NUM_SAMPLES as f64)
+	}
 
     fn cast_ray(&self, ray: Ray, bounces_left: u32) -> Spectrum {
         if let Some(ray_intersection) = self.scene.intersect(ray) {
-            let object = ray_intersection.object();
-            let min_dist = ray_intersection.distance();
-            let mut intersection_point: Point = ray.get_intersection_point(min_dist);
-            // bumping the point a little out of the object to prevent self-collision
-            let surface_normal: Vector = object.surface_normal(intersection_point);
-            intersection_point = intersection_point + surface_normal * EPS;
-
-            let emittance = object.material().emittance;
             match bounces_left {
                 0 => {
                     self.zero_bounce_radiance(&ray_intersection)
                 }
                 1 => {
-                    let num_samples = 64;
-                    let mut l = Spectrum::black();
-                    for _ in 0..num_samples {
-                        // direct lighting
-                        let wo = ray.direction;
-                        let wi = Vector::random_hemisphere(surface_normal);
-                        let bounced_ray = Ray::new(intersection_point, wi);
-
-                        let reflected = object.material().bsdf(wi, wo);
-                        let other_emittance = self.cast_ray(bounced_ray, 0);
-
-                        if !other_emittance.is_black() {
-                            let color =
-                                emittance + other_emittance * reflected;// * f64::abs(wi.z());
-                            l += color;
-                        } else {
-                            l += emittance;
-                        }
-                    }
-					// TODO: figure out what's going on with num samples
-					l = l * 2.0 * std::f32::consts::PI;
-                    l // * (4.0 / NUM_SAMPLES as f64)
+					self.one_bounce_radiance_hemisphere(
+						&ray_intersection
+					)
                 }
                 _ => {
                     // global illumination
