@@ -1,6 +1,8 @@
 # rustracer
 
-![Sphere on top of plane](/screenshots/sphere_on_top_of_plane.png?raw=true "Sphere on Plane")
+Screenshot | Table?
+----------------------------------------:|:----------------------------
+![Direct lighting with hemisphere sampling](/screenshots/direct_lighting_hemisphere.png?raw=true "Direct lighting with hemisphere sampling") | ![Lambertian Sphere on top of plane](/screenshots/sphere_on_top_of_plane.png?raw=true "Lambertian Sphere on Plane")
 
 Not a racing program written in rust!
 
