@@ -127,6 +127,9 @@ impl Raytracer {
 		l // * (4.0 / NUM_SAMPLES as f64)
 	}
 
+	// fn one_bounce_radiance_importance(&self, intersection: &RayIntersection) -> Spectrum {
+	// }
+
     fn cast_ray(&self, ray: Ray, bounces_left: u32) -> Spectrum {
         if let Some(ray_intersection) = self.scene.intersect(ray) {
             match bounces_left {

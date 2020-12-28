@@ -11,6 +11,8 @@ use crate::common::{Spectrum, GENERIC_ERROR};
 pub struct Scene {
     planes: Vec<Plane>,
     spheres: Vec<Sphere>,
+	// TODO: Figure out how to cache this in a thread safe way
+	// lights: Vec<&'a dyn Object>,
 }
 
 pub struct RayIntersection<'a> {
@@ -34,9 +36,9 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    // pub fn new<'a>(objects: Vector<&'a dyn Object>) -> Scene {
-    // 	unimplemented!();
-    // }
+    fn new(planes: Vec<Plane>, spheres: Vec<Sphere>) -> Scene {
+		Scene { planes, spheres }
+    }
 
     pub fn new_preset() -> Scene {
         let red_diffuse_material = Material::new(
@@ -103,7 +105,7 @@ impl Scene {
 				grey_diffuse_material,
 			),
 		];
-        Scene { planes, spheres }
+        Scene::new(planes, spheres)
     }
 
     // allows indexing across multiple object data structures
@@ -147,4 +149,19 @@ impl Scene {
             None => None,
         }
     }
+
+	pub fn lights(&self) -> Vec<&dyn Object> {
+		let mut lights = Vec::<&dyn Object>::new();
+		for plane in &self.planes {
+			if !plane.material().emittance.is_black() {
+				lights.push(plane);
+			}
+		}
+		for sphere in &self.spheres {
+			if !sphere.material().emittance.is_black() {
+				lights.push(sphere);
+			}
+		}
+		lights
+	}
 }
