@@ -121,7 +121,7 @@ impl Raytracer {
                         }
                     }
 					// TODO: figure out what's going on with num samples
-					l = l * 2.0 * std::f64::consts::PI;
+					l = l * 2.0 * std::f32::consts::PI;
                     l // * (4.0 / NUM_SAMPLES as f64)
                 }
                 _ => {

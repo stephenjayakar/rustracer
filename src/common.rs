@@ -21,9 +21,9 @@ impl Spectrum {
     }
 
     pub fn new(r: u32, g: u32, b: u32) -> Spectrum {
-        Spectrum { r: r as f32,
-				   g: g as f32,
-				   b: b as f32 }
+        Spectrum { r: r as f32 / 255.0,
+				   g: g as f32 / 255.0,
+				   b: b as f32 / 255.0}
     }
 
 	fn new_f(r: f32, g: f32, b: f32) -> Spectrum {
@@ -44,36 +44,32 @@ impl Spectrum {
         }
     }
 
-    fn to_intensity(val: u8) -> f64 {
-        val as f64 / 255.0
-    }
-
-    fn to_color(intensity: f64) -> u32 {
-        (intensity * 255.0) as u32
+    fn to_color(intensity: f32) -> u8 {
+        Spectrum::to_u8(intensity * 255.0)
     }
 
     pub fn r(&self) -> u8 {
-        Spectrum::to_u8(self.r)
+        Spectrum::to_color(self.r)
     }
 
     pub fn g(&self) -> u8 {
-        Spectrum::to_u8(self.g)
+        Spectrum::to_color(self.g)
     }
 
     pub fn b(&self) -> u8 {
-        Spectrum::to_u8(self.b)
+        Spectrum::to_color(self.b)
     }
 
-    fn ri(&self) -> f64 {
-        Spectrum::to_intensity(self.r())
+    fn ri(&self) -> f32 {
+		f32::min(1.0, self.r)
     }
 
-    fn gi(&self) -> f64 {
-        Spectrum::to_intensity(self.g())
+    fn gi(&self) -> f32 {
+		f32::min(1.0, self.g)
     }
 
-    fn bi(&self) -> f64 {
-        Spectrum::to_intensity(self.b())
+    fn bi(&self) -> f32 {
+		f32::min(1.0, self.b)
     }
 }
 
@@ -94,28 +90,25 @@ impl AddAssign for Spectrum {
 impl Mul for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: Spectrum) -> Self::Output {
-        Spectrum::new(
-            Spectrum::to_color(self.ri() * other.ri()),
-            Spectrum::to_color(self.gi() * other.gi()),
-            Spectrum::to_color(self.bi() * other.bi()),
-        )
+        Spectrum::new_f(
+            self.ri() * other.ri(),
+            self.gi() * other.gi(),
+            self.bi() * other.bi())
     }
 }
 
-impl Mul<f64> for Spectrum {
+impl Mul<f32> for Spectrum {
     type Output = Spectrum;
-    fn mul(self, other: f64) -> Self::Output {
+    fn mul(self, other: f32) -> Self::Output {
         // should probably panic if out of range
-        let new_r = self.r as f64 * other;
-        let new_g = self.g as f64 * other;
-        let new_b = self.b as f64 * other;
+        let new_r = self.r * other;
+        let new_g = self.g * other;
+        let new_b = self.b * other;
         debug_assert!(new_r <= 255.0 && new_g <= 255.0 && new_b <= 255.0);
-        unsafe {
-            Spectrum::new(
-                (self.r as f64 * other).to_int_unchecked(),
-                (self.g as f64 * other).to_int_unchecked(),
-                (self.b as f64 * other).to_int_unchecked(),
-            )
-        }
+        Spectrum::new_f(
+			new_r,
+			new_g,
+			new_b,
+        )
     }
 }
