@@ -1,6 +1,10 @@
+#![allow(dead_code)]
+
 use std::env;
 
 extern crate sdl2;
+
+use rayon::prelude::*;
 
 mod canvas;
 mod common;
@@ -9,6 +13,8 @@ mod scene;
 use canvas::Canvas;
 use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
 use scene::{Point, Ray, Scene, Vector};
+
+use std::time::Instant;
 
 struct Config {
     screen_width: u32,
@@ -47,16 +53,21 @@ impl Raytracer {
 
     /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
     /// `Spectrum` value to the `Canvas`.
-    pub fn render(&mut self) {
-        for i in 0..self.config.screen_width {
-            for j in 0..self.config.screen_height {
-                let vector = self.screen_to_world(i, j);
-                let ray = Ray::new(self.config.origin, vector);
-                let color = self.cast_ray(&ray, 0);
-                self.canvas.draw_pixel(i, j, color);
-            }
-        }
+    pub fn render(&self) {
+        (0..self.config.screen_width).into_par_iter().for_each(|i| {
+            (0..self.config.screen_height).into_par_iter().for_each(|j| {
+				let color = self.render_helper(i, j);
+				self.canvas.draw_pixel(i, j, color);
+			});
+		});
     }
+
+	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
+        let vector = self.screen_to_world(i, j);
+        let ray = Ray::new(self.config.origin, vector);
+        let color = self.cast_ray(&ray, 1);
+		color
+	}
 
     /// Algorithm to covert pixel positions in screen-space to a 3D Vector in world-space.
     /// Assumes the camera is pointing in -z at the origin.
@@ -85,7 +96,7 @@ impl Raytracer {
             let mut intersection_point: Point = ray.get_intersection_point(min_dist);
             // bumping the point a little out of the object to prevent self-collision
             let surface_normal: Vector = object.surface_normal(intersection_point);
-            intersection_point = intersection_point + surface_normal.scale(EPS);
+            intersection_point = intersection_point + surface_normal * EPS;
 
             let emittance = object.material().emittance;
             match bounces_left {
@@ -94,34 +105,90 @@ impl Raytracer {
                     emittance
                 }
                 1 => {
-                    // direct lighting
-                    unimplemented!()
+                    let num_samples = 64;
+                    let mut l = Spectrum::black();
+                    for _ in 0..num_samples {
+                        // direct lighting
+                        let wo = ray.direction;
+                        let wi = Vector::random_hemisphere(surface_normal);
+                        let bounced_ray = Ray::new(intersection_point, wi);
+
+                        let reflected = object.material().bsdf(wi, wo);
+                        let other_emittance = self.cast_ray(&bounced_ray, 0);
+
+                        if !other_emittance.is_black() {
+                            let color =
+                                emittance + other_emittance * reflected;// * f64::abs(wi.z());
+                            l += color;
+                        } else {
+                            l += emittance;
+                        }
+                    }
+					// TODO: figure out what's going on with num samples
+					l = l * 2.0 * std::f32::consts::PI;
+                    l // * (4.0 / NUM_SAMPLES as f64)
                 }
                 _ => {
                     // global illumination
                     unimplemented!()
                 }
             }
-        // for point_light in self.lights.iter() {
-        //     let light_direction = (point_light.position - intersection_point).normalized();
-        //     let light_ray = Ray::new(intersection_point, light_direction);
-
-        //     if self.object_intersection(&light_ray).is_none() {
-        // 	// lambertian code
-        // 	let intensity = f64::abs(light_direction.dot(surface_normal));
-        // 	let color_value = (intensity * 255.0) as u8;
-        // 	color += Spectrum::new(color_value, color_value, color_value);
-        //     }
-        // }
         } else {
-            Spectrum::new(0, 0, 0)
+            Spectrum::black()
         }
     }
 
-    fn start(&mut self) {
+	/// Renderer that paints grey for intersections, and black otherwise
+	pub fn debug_render(&self) {
+        for i in 0..self.config.screen_width {
+            for j in 0..self.config.screen_height {
+				let color = self.debug_render_helper(i, j);
+				self.canvas.draw_pixel(i, j, color);
+			}
+		}
+	}
+
+	fn debug_render_helper(&self, i: u32, j: u32) -> Spectrum {
+        let vector = self.screen_to_world(i, j);
+        let ray = Ray::new(self.config.origin, vector);
+		if let Some(_) = self.scene.intersect(&ray) {
+			Spectrum::grey()
+		} else {
+			Spectrum::black()
+		}
+	}
+
+	fn draw_axis(&self) {
+		let (start_x, start_y) = (10, 10);
+		let length = 15;
+		let x_axis_color = Spectrum::red();
+		let y_axis_color = Spectrum::green();
+
+		for j in 0..length {
+			self.canvas.draw_pixel(start_x, start_y + j, y_axis_color);
+		}
+
+		for i in 0..length {
+			self.canvas.draw_pixel(start_x + i, start_y + length, x_axis_color);
+		}
+	}
+
+    pub fn start(&self) {
+		let start = Instant::now();
         self.render();
+		let duration = start.elapsed();
+		println!("Rendering took: {:?}", duration);
+		self.draw_axis();
         self.canvas.start();
     }
+
+	/// Helpful function to test a pixel's behavior.  Use this in combination
+	/// with the mouse_down pixel print implemented
+	fn test(&self) {
+		let i = 1189;//227;
+		let j = 855;//312;
+		println!("{:?}", self.render_helper(i, j));
+	}
 }
 
 fn parse_args(args: Vec<String>) -> Option<(u32, u32)> {
@@ -133,7 +200,7 @@ fn parse_args(args: Vec<String>) -> Option<(u32, u32)> {
                 .parse()
                 .expect("passed in invalid width");
             let height = args
-                .get(1)
+                .get(2)
                 .unwrap()
                 .parse()
                 .expect("passed in invalid width");
@@ -153,6 +220,7 @@ fn main() {
 
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
-    let mut raytracer = Raytracer::new(config);
+    let raytracer = Raytracer::new(config);
+	// raytracer.test();
     raytracer.start();
 }

@@ -1,9 +1,10 @@
 extern crate nalgebra as na;
 
-use na::base::Vector3;
+use na::base::{Matrix3, Vector3};
 use na::geometry::Point3;
 
-use std::ops::{Add, Sub};
+use std::ops::{Add, Mul, Sub};
+use crate::common::EPS;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Ray {
@@ -21,7 +22,7 @@ impl Ray {
     }
 
     pub fn get_intersection_point(&self, scalar: f64) -> Point {
-        let scaled_vector = self.direction.scale(scalar);
+        let scaled_vector = self.direction * scalar;
         self.origin + scaled_vector
     }
 }
@@ -73,6 +74,46 @@ impl Vector {
         Vector::new(x, y, z).normalized()
     }
 
+    /// Basically copied this from my 184 project, as the naive way that I was going
+    /// to implement was biased towards vectors going towards the normal.  Oops.
+    /// TODO: Figure out how this works.
+    pub fn random_hemisphere(normal: Vector) -> Vector {
+        // creating a random vector in object space
+        let xi1 = fastrand::f64();
+        let xi2 = fastrand::f64();
+
+        let theta = f64::acos(xi1);
+        let phi = 2.0 * std::f64::consts::PI * xi2;
+        let xs = f64::sin(theta) * f64::cos(phi);
+        let ys = f64::sin(theta) * f64::sin(phi);
+        let zs = f64::cos(theta);
+
+        // make_coord_space from 184.  make it a function if we use it again
+        // TODO: unsure if these clones are necessary
+		// special handling if normal is (0, 1, 0), as cross products will be undefined.
+		// other behavior
+        let mut z = normal.v.clone();
+        let mut h = z.clone();
+        if f64::abs(h.x) <= f64::abs(h.y) && f64::abs(h.x) <= f64::abs(h.z) {
+            h.y = 1.0;
+			// TODO: Unsure about these.  meant to fix the cross multiplication issues.
+			h.x += EPS;
+			h.z += EPS;
+        } else {
+            h.z = 1.0;
+			h.x += EPS;
+			h.y += EPS;
+        }
+
+        z = z.normalize();
+        let y = h.cross(&z).normalize();
+        let x = z.cross(&y).normalize();
+
+        // let o2w = Matrix3::from_rows(&[x.transpose(), y.transpose(), z.transpose()]);
+        let o2w = Matrix3::from_columns(&[x, y, z]);
+        Vector::new_from_na(o2w * Vector3::new(xs, ys, zs))
+    }
+
     pub fn norm(&self) -> f64 {
         self.v.norm()
     }
@@ -83,10 +124,6 @@ impl Vector {
 
     pub fn dot(&self, other_vector: Vector) -> f64 {
         self.v.dot(&other_vector.v)
-    }
-
-    pub fn scale(&self, scalar: f64) -> Vector {
-        Vector::new_from_na(self.v * scalar)
     }
 
     pub fn x(&self) -> f64 {
@@ -131,5 +168,12 @@ impl Sub for Vector {
 
     fn sub(self, other: Vector) -> Self::Output {
         Vector::new_from_na(self.v - other.v)
+    }
+}
+
+impl Mul<f64> for Vector {
+	type Output = Vector;
+    fn mul(self, other: f64) -> Vector {
+        Vector::new_from_na(self.v * other)
     }
 }
