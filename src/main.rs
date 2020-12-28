@@ -49,7 +49,7 @@ impl Raytracer {
 
     /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
     /// `Spectrum` value to the `Canvas`.
-    pub fn render(&mut self) {
+    pub fn render(&self) {
         for i in 0..self.config.screen_width {
             for j in 0..self.config.screen_height {
 				let color = self.render_helper(i, j);
@@ -135,7 +135,7 @@ impl Raytracer {
     }
 
 	/// Renderer that paints grey for intersections, and black otherwise
-	pub fn debug_render(&mut self) {
+	pub fn debug_render(&self) {
         for i in 0..self.config.screen_width {
             for j in 0..self.config.screen_height {
 				let color = self.debug_render_helper(i, j);
@@ -154,7 +154,7 @@ impl Raytracer {
 		}
 	}
 
-	fn draw_axis(&mut self) {
+	fn draw_axis(&self) {
 		let (start_x, start_y) = (10, 10);
 		let length = 15;
 		let x_axis_color = Spectrum::red();
@@ -169,7 +169,7 @@ impl Raytracer {
 		}
 	}
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
         self.render();
 		self.draw_axis();
         self.canvas.start();
