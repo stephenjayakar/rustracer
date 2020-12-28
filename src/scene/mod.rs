@@ -14,8 +14,23 @@ pub struct Scene {
 }
 
 pub struct RayIntersection<'a> {
-    pub distance: f64,
-    pub object: &'a dyn Object,
+    distance: f64,
+    object: &'a dyn Object,
+	ray: Ray,
+}
+
+impl<'a> RayIntersection<'a> {
+	pub fn distance(&self) -> f64 {
+		self.distance
+	}
+
+	pub fn object(&self) -> &'a dyn Object {
+		self.object
+	}
+
+	pub fn ray(&self) -> &Ray {
+		&self.ray
+	}
 }
 
 impl Scene {
@@ -109,12 +124,14 @@ impl Scene {
         self.planes.len() + self.spheres.len()
     }
 
-    pub fn intersect(&self, ray: &Ray) -> Option<RayIntersection> {
+	/// Intersects the scene with the given ray and takes ownership of it,
+	/// in order to populate it in the intersection object without copying.
+    pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
         let mut min_object = None;
         for i in 0..self.num_objects() {
             let object = self.get_object_by_index(i);
-            if let Some(d) = object.intersect(ray) {
+            if let Some(d) = object.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
                     min_object = Some(object);
@@ -124,6 +141,7 @@ impl Scene {
         match min_object {
             Some(object) => Some(RayIntersection {
                 object,
+				ray,
                 distance: min_dist,
             }),
             None => None,

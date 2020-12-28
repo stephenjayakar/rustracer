@@ -12,7 +12,7 @@ mod scene;
 
 use canvas::Canvas;
 use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
-use scene::{Point, Ray, Scene, Vector};
+use scene::{Point, Ray, Scene, Vector, RayIntersection};
 
 use std::time::Instant;
 
@@ -65,7 +65,7 @@ impl Raytracer {
 	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
-        let color = self.cast_ray(&ray, 1);
+        let color = self.cast_ray(ray, 1);
 		color
 	}
 
@@ -89,10 +89,17 @@ impl Raytracer {
         direction
     }
 
-    fn cast_ray(&self, ray: &Ray, bounces_left: u32) -> Spectrum {
+	fn zero_bounce_radiance(&self, intersection: &RayIntersection) -> Spectrum {
+		intersection.object().material().emittance
+	}
+
+	// fn one_bounce_radiance_hemisphere() -> Spectrum {
+	// }
+
+    fn cast_ray(&self, ray: Ray, bounces_left: u32) -> Spectrum {
         if let Some(ray_intersection) = self.scene.intersect(ray) {
-            let object = ray_intersection.object;
-            let min_dist = ray_intersection.distance;
+            let object = ray_intersection.object();
+            let min_dist = ray_intersection.distance();
             let mut intersection_point: Point = ray.get_intersection_point(min_dist);
             // bumping the point a little out of the object to prevent self-collision
             let surface_normal: Vector = object.surface_normal(intersection_point);
@@ -101,8 +108,7 @@ impl Raytracer {
             let emittance = object.material().emittance;
             match bounces_left {
                 0 => {
-                    // zero bounce radiance
-                    emittance
+                    self.zero_bounce_radiance(&ray_intersection)
                 }
                 1 => {
                     let num_samples = 64;
@@ -114,7 +120,7 @@ impl Raytracer {
                         let bounced_ray = Ray::new(intersection_point, wi);
 
                         let reflected = object.material().bsdf(wi, wo);
-                        let other_emittance = self.cast_ray(&bounced_ray, 0);
+                        let other_emittance = self.cast_ray(bounced_ray, 0);
 
                         if !other_emittance.is_black() {
                             let color =
@@ -151,7 +157,7 @@ impl Raytracer {
 	fn debug_render_helper(&self, i: u32, j: u32) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
-		if let Some(_) = self.scene.intersect(&ray) {
+		if let Some(_) = self.scene.intersect(ray) {
 			Spectrum::grey()
 		} else {
 			Spectrum::black()
