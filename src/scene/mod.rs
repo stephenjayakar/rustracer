@@ -44,7 +44,7 @@ impl Scene {
             Spectrum::grey(),
             Spectrum::black(),
         );
-        let reddish_white_light_material = Material::new(
+        let white_light_material = Material::new(
             BSDF::Diffuse,
             Spectrum::black(),
             Spectrum::white(),
@@ -54,7 +54,7 @@ impl Scene {
             Sphere::new(Point::new(5.0, 0.0, -20.0), 2.0, red_diffuse_material),
             Sphere::new(Point::new(-5.0, 0.0, -20.0), 2.0, grey_diffuse_material),
             Sphere::new(Point::new(10.0, 0.0, -20.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(4.0, 4.0, -18.0), 1.5, reddish_white_light_material),
+            Sphere::new(Point::new(4.0, 4.0, -18.0), 1.5, white_light_material),
         ];
         let planes = vec![
 			// bottom wall

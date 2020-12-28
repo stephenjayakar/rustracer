@@ -95,6 +95,10 @@ impl Spectrum {
 	pub const fn green() -> Spectrum {
 		Spectrum::new_f(0.0, 1.0, 0.0)
 	}
+
+	pub const fn purple() -> Spectrum {
+		Spectrum::new_f(0.5, 0.0, 0.5)
+	}
 }
 
 // note: this will not panic on overflow.  be careful!
