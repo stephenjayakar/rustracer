@@ -37,7 +37,7 @@ impl Canvas {
     }
 
     /// Starts a new canvas context that takes over the main thread.
-    pub fn start(&mut self) {
+    pub fn start(&self) {
         let sdl_context = sdl2::init().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
@@ -86,7 +86,7 @@ impl Canvas {
         }
     }
 
-    pub fn draw_pixel(&mut self, x: u32, y: u32, s: Spectrum) -> bool {
+    pub fn draw_pixel(&self, x: u32, y: u32, s: Spectrum) -> bool {
         // maybe only do this check if debug?
         if x >= self.width || y >= self.width {
             return false;

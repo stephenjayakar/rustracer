@@ -4,6 +4,8 @@ use std::env;
 
 extern crate sdl2;
 
+use rayon::prelude::*;
+
 mod canvas;
 mod common;
 mod scene;
@@ -11,6 +13,8 @@ mod scene;
 use canvas::Canvas;
 use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
 use scene::{Point, Ray, Scene, Vector};
+
+use std::time::Instant;
 
 struct Config {
     screen_width: u32,
@@ -49,13 +53,13 @@ impl Raytracer {
 
     /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
     /// `Spectrum` value to the `Canvas`.
-    pub fn render(&mut self) {
-        for i in 0..self.config.screen_width {
-            for j in 0..self.config.screen_height {
+    pub fn render(&self) {
+        (0..self.config.screen_width).into_par_iter().for_each(|i| {
+            (0..self.config.screen_height).into_par_iter().for_each(|j| {
 				let color = self.render_helper(i, j);
 				self.canvas.draw_pixel(i, j, color);
-            }
-        }
+			});
+		});
     }
 
 	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
@@ -101,7 +105,7 @@ impl Raytracer {
                     emittance
                 }
                 1 => {
-                    let num_samples = 32;
+                    let num_samples = 64;
                     let mut l = Spectrum::black();
                     for _ in 0..num_samples {
                         // direct lighting
@@ -135,7 +139,7 @@ impl Raytracer {
     }
 
 	/// Renderer that paints grey for intersections, and black otherwise
-	pub fn debug_render(&mut self) {
+	pub fn debug_render(&self) {
         for i in 0..self.config.screen_width {
             for j in 0..self.config.screen_height {
 				let color = self.debug_render_helper(i, j);
@@ -154,7 +158,7 @@ impl Raytracer {
 		}
 	}
 
-	fn draw_axis(&mut self) {
+	fn draw_axis(&self) {
 		let (start_x, start_y) = (10, 10);
 		let length = 15;
 		let x_axis_color = Spectrum::red();
@@ -169,8 +173,11 @@ impl Raytracer {
 		}
 	}
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
+		let start = Instant::now();
         self.render();
+		let duration = start.elapsed();
+		println!("Rendering took: {:?}", duration);
 		self.draw_axis();
         self.canvas.start();
     }
@@ -213,7 +220,7 @@ fn main() {
 
     // set up raytracer
     let config = Config::new(screen_width, screen_height, 90.0);
-    let mut raytracer = Raytracer::new(config);
+    let raytracer = Raytracer::new(config);
 	// raytracer.test();
     raytracer.start();
 }
