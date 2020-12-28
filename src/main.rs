@@ -102,7 +102,7 @@ impl Raytracer {
                 }
                 1 => {
                     let num_samples = 32;
-                    let mut l = Spectrum::new(0, 0, 0);
+                    let mut l = Spectrum::black();
                     for _ in 0..num_samples {
                         // direct lighting
                         let wo = ray.direction;
@@ -130,7 +130,7 @@ impl Raytracer {
                 }
             }
         } else {
-            Spectrum::new(0, 0, 0)
+            Spectrum::black()
         }
     }
 
@@ -145,21 +145,20 @@ impl Raytracer {
 	}
 
 	fn debug_render_helper(&self, i: u32, j: u32) -> Spectrum {
-		let grey = Spectrum::new(128, 128, 128);
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
 		if let Some(_) = self.scene.intersect(&ray) {
-			grey
+			Spectrum::grey()
 		} else {
-			Spectrum::new(0, 0, 0)
+			Spectrum::black()
 		}
 	}
 
 	fn draw_axis(&mut self) {
 		let (start_x, start_y) = (10, 10);
 		let length = 15;
-		let x_axis_color = Spectrum::new(255, 0, 0);
-		let y_axis_color = Spectrum::new(0, 255, 0);
+		let x_axis_color = Spectrum::red();
+		let y_axis_color = Spectrum::green();
 
 		for j in 0..length {
 			self.canvas.draw_pixel(start_x, start_y + j, y_axis_color);

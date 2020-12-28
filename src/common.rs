@@ -26,7 +26,7 @@ impl Spectrum {
 				   b: b as f32 / 255.0}
     }
 
-	fn new_f(r: f32, g: f32, b: f32) -> Spectrum {
+	const fn new_f(r: f32, g: f32, b: f32) -> Spectrum {
 		Spectrum { r, g, b }
 	}
 
@@ -71,6 +71,30 @@ impl Spectrum {
     fn bi(&self) -> f32 {
 		f32::min(1.0, self.b)
     }
+
+	pub const fn black() -> Spectrum {
+		Spectrum::new_f(0.0, 0.0, 0.0)
+	}
+
+	pub const fn white() -> Spectrum {
+		Spectrum::new_f(1.0, 1.0, 1.0)
+	}
+
+	pub const fn grey() -> Spectrum {
+		Spectrum::new_f(0.78, 0.78, 0.78)
+	}
+
+	pub const fn red() -> Spectrum {
+		Spectrum::new_f(1.0, 0.0, 0.0)
+	}
+
+	pub const fn blue() -> Spectrum {
+		Spectrum::new_f(0.0, 0.0, 1.0)
+	}
+
+	pub const fn green() -> Spectrum {
+		Spectrum::new_f(0.0, 1.0, 0.0)
+	}
 }
 
 // note: this will not panic on overflow.  be careful!
