@@ -4,6 +4,8 @@ use std::env;
 
 extern crate sdl2;
 
+use rayon::prelude::*;
+
 mod canvas;
 mod common;
 mod scene;
@@ -50,12 +52,12 @@ impl Raytracer {
     /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
     /// `Spectrum` value to the `Canvas`.
     pub fn render(&self) {
-        for i in 0..self.config.screen_width {
-            for j in 0..self.config.screen_height {
+        (0..self.config.screen_width).into_par_iter().for_each(|i| {
+            (0..self.config.screen_height).into_par_iter().for_each(|j| {
 				let color = self.render_helper(i, j);
 				self.canvas.draw_pixel(i, j, color);
-            }
-        }
+			});
+		});
     }
 
 	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
