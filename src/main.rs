@@ -117,7 +117,6 @@ impl Raytracer {
                     other_emittance * reflected * cos_theta * 2.0 * std::f32::consts::PI;
                 l += color;
 			}
-			// TODO: figure out what's going with PDF
 		}
 		l = l * (1.0 / num_samples as f32) + emittance;
 		l
@@ -130,7 +129,7 @@ impl Raytracer {
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
-		let num_light_samples = 16;
+		let num_light_samples = 64;
 
 		for light in self.scene.lights() {
 			for _ in 0..num_light_samples {
