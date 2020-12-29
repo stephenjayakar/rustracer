@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(clamp)]
 
 use std::env;
 
@@ -11,7 +12,7 @@ mod common;
 mod scene;
 
 use canvas::Canvas;
-use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH, EPS};
+use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH};
 use scene::{Point, Ray, Scene, Vector, RayIntersection};
 
 use std::time::Instant;
@@ -95,7 +96,6 @@ impl Raytracer {
 
 	fn one_bounce_radiance_hemisphere(&self, intersection: &RayIntersection) -> Spectrum {
         let object = intersection.object();
-        let min_dist = intersection.distance();
 		let ray = intersection.ray();
         let intersection_point: Point = intersection.point();
 		let surface_normal: Vector = object.surface_normal(intersection_point);
@@ -131,10 +131,10 @@ impl Raytracer {
         let emittance = object.material().emittance;
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
+		let num_light_samples = 8;
 
 		for light in self.scene.lights() {
-			let num_samples = 8;
-			for _ in 0..num_samples {
+			for _ in 0..num_light_samples {
 				let random_point = light.random_point();
 				let wo = ray.direction;
 				let wi = (random_point - intersection_point).normalized();
@@ -144,15 +144,14 @@ impl Raytracer {
 				if !other_emittance.is_black() {
 					let reflected = object.material().bsdf(wi, wo);
 					let color =
-						emittance + other_emittance * reflected;
+						other_emittance * reflected;
 					l += color;
-				} else {
-					l += emittance;
 				}
-				// TODO: multiply by probability of casting in that direction
-				// l = l * (1.0 / num_samples as f32);
 			}
+			l = l * (1.0 / num_light_samples as f32);
 		}
+		// TODO: multiply by probability of casting in that direction
+		l += emittance;
 		l
 	}
 
