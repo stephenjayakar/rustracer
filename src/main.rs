@@ -114,12 +114,11 @@ impl Raytracer {
 				let reflected = object.material().bsdf(wi, wo);
 				let cos_theta = f32::abs(wi.dot(normal) as f32);
                 let color =
-                    other_emittance * reflected * cos_theta;
+                    other_emittance * reflected * cos_theta * 2.0 * std::f32::consts::PI;
                 l += color;
 			}
 			// TODO: figure out what's going with PDF
 		}
-		l = l * 2.0 * std::f32::consts::PI;
 		l = l * (1.0 / num_samples as f32) + emittance;
 		l
 	}
@@ -131,13 +130,13 @@ impl Raytracer {
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
-		let num_light_samples = 8;
+		let num_light_samples = 16;
 
 		for light in self.scene.lights() {
 			for _ in 0..num_light_samples {
-				let random_point = light.random_point();
 				let wo = ray.direction;
-				let wi = (random_point - intersection_point).normalized();
+				let sample = light.sample_l(intersection_point);
+				let (pdf, wi) = (sample.pdf, sample.wi);
 				let bounced_ray = Ray::new(intersection_point, wi);
 				let other_emittance = self.cast_ray(bounced_ray, 0);
 
@@ -145,13 +144,12 @@ impl Raytracer {
 					let reflected = object.material().bsdf(wi, wo);
 					let cos_theta = f32::abs(wi.dot(normal) as f32);
 					let color =
-						other_emittance * reflected * cos_theta;
+						other_emittance * reflected * cos_theta * pdf as f32;
 					l += color;
 				}
 			}
 			l = l * (1.0 / num_light_samples as f32);
 		}
-		// TODO: multiply by probability of casting in that direction
 		l += emittance;
 		l
 	}
