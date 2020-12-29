@@ -13,11 +13,20 @@ pub struct Material {
     pub emittance: Spectrum,
 }
 
+pub struct LightSample {
+	pub pdf: f64,
+	pub wi: Vector,
+}
+
 pub trait Object {
 	/// Returns distance if intersection occurs.
     fn intersect(&self, ray: &Ray) -> Option<f64>;
     fn surface_normal(&self, point: Point) -> Vector;
     fn material(&self) -> &Material;
+	/// Returns a random point on the object.  Used for importance sampling.
+	fn random_point(&self) -> Point;
+	/// TODO: This should probably also return a vector... replace random point
+	fn sample_l(&self, intersection_point: Point) -> LightSample;
 }
 
 pub struct Sphere {
@@ -87,6 +96,27 @@ impl Object for Sphere {
     fn material(&self) -> &Material {
         &self.material
     }
+
+	fn random_point(&self) -> Point {
+		let random_vector = Vector::random_sphere();
+		let point = self.center.clone();
+		point + (random_vector * self.radius)
+	}
+
+	fn sample_l(&self, intersection_point: Point) -> LightSample {
+		let p = intersection_point;
+		let s = self.random_point();
+		let ps = s - p;
+		let wi = ps.normalized();
+		let d_c = (self.center - p).norm();
+		let d_s = ps.norm();
+		let cos_a = (d_c.powi(2) + self.radius.powi(2) - d_s.powi(2)) / (2.0 * d_c * self.radius);
+		let pdf = 2.0 * std::f64::consts::PI * (1.0 - cos_a);
+		LightSample {
+			pdf,
+			wi,
+		}
+	}
 }
 
 impl Plane {
@@ -116,4 +146,12 @@ impl Object for Plane {
     fn material(&self) -> &Material {
         &self.material
     }
+
+	fn random_point(&self) -> Point {
+		unimplemented!()
+	}
+
+	fn sample_l(&self, intersection_point: Point) -> LightSample {
+		unimplemented!()
+	}
 }

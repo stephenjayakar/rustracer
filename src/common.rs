@@ -45,7 +45,8 @@ impl Spectrum {
     }
 
     fn to_color(intensity: f32) -> u8 {
-        Spectrum::to_u8(intensity * 255.0)
+		// pow(...) is gamma correction
+        Spectrum::to_u8(f32::powf(intensity.clamp(0.0, 1.0), 1.0 / 2.2) * 255.0)
     }
 
     pub fn r(&self) -> u8 {
@@ -60,17 +61,18 @@ impl Spectrum {
         Spectrum::to_color(self.b)
     }
 
-    fn ri(&self) -> f32 {
-		f32::min(1.0, self.r)
-    }
+	// Unsure how I feel about these, as we're clamping on return
+    // fn ri(&self) -> f32 {
+	// 	f32::min(1.0, self.r)
+    // }
 
-    fn gi(&self) -> f32 {
-		f32::min(1.0, self.g)
-    }
+    // fn gi(&self) -> f32 {
+	// 	f32::min(1.0, self.g)
+    // }
 
-    fn bi(&self) -> f32 {
-		f32::min(1.0, self.b)
-    }
+    // fn bi(&self) -> f32 {
+	// 	f32::min(1.0, self.b)
+    // }
 
 	pub const fn black() -> Spectrum {
 		Spectrum::new_f(0.0, 0.0, 0.0)
@@ -119,9 +121,9 @@ impl Mul for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: Spectrum) -> Self::Output {
         Spectrum::new_f(
-            self.ri() * other.ri(),
-            self.gi() * other.gi(),
-            self.bi() * other.bi())
+            self.r * other.r,
+            self.g * other.g,
+            self.b * other.b)
     }
 }
 
