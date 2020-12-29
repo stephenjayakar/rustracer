@@ -109,10 +109,23 @@ impl Vector {
         let y = h.cross(&z).normalize();
         let x = z.cross(&y).normalize();
 
-        // let o2w = Matrix3::from_rows(&[x.transpose(), y.transpose(), z.transpose()]);
         let o2w = Matrix3::from_columns(&[x, y, z]);
         Vector::new_from_na(o2w * Vector3::new(xs, ys, zs))
     }
+
+	/// Samples uniformly on a unit sphere and returns the associated vector
+	pub fn random_sphere() -> Vector {
+		// TODO: figure out how to not repeat this for hemisphere
+        let xi1 = fastrand::f64();
+        let xi2 = fastrand::f64();
+
+        let theta = 2.0 * std::f64::consts::PI * xi1;
+        let phi = f64::acos(1.0 - 2.0 * xi2);
+        let xs = f64::sin(phi) * f64::cos(theta);
+        let ys = f64::sin(phi) * f64::sin(theta);
+        let zs = f64::cos(phi);
+		Vector::new(xs, ys, zs)
+	}
 
     pub fn norm(&self) -> f64 {
         self.v.norm()

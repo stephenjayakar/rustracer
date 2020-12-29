@@ -18,6 +18,8 @@ pub trait Object {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
     fn surface_normal(&self, point: Point) -> Vector;
     fn material(&self) -> &Material;
+	/// Returns a random point on the object.  Used for importance sampling.
+	fn random_point(&self) -> Point;
 }
 
 pub struct Sphere {
@@ -87,6 +89,12 @@ impl Object for Sphere {
     fn material(&self) -> &Material {
         &self.material
     }
+
+	fn random_point(&self) -> Point {
+		let random_vector = Vector::random_sphere();
+		let point = self.center.clone();
+		point + (random_vector * self.radius)
+	}
 }
 
 impl Plane {
@@ -116,4 +124,8 @@ impl Object for Plane {
     fn material(&self) -> &Material {
         &self.material
     }
+
+	fn random_point(&self) -> Point {
+		unimplemented!()
+	}
 }
