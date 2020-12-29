@@ -6,7 +6,7 @@ mod objects;
 pub use geo::{Point, Ray, Vector};
 use objects::{Material, Object, Plane, Sphere, BSDF};
 
-use crate::common::{Spectrum, GENERIC_ERROR};
+use crate::common::{Spectrum, GENERIC_ERROR, EPS};
 
 pub struct Scene {
     planes: Vec<Plane>,
@@ -32,6 +32,16 @@ impl<'a> RayIntersection<'a> {
 
 	pub fn ray(&self) -> &Ray {
 		&self.ray
+	}
+
+	pub fn point(&self) -> Point {
+        let min_dist = self.distance();
+		let ray = self.ray();
+        let scaled_vector = ray.direction * min_dist;
+        let intersection_point = ray.origin + scaled_vector;
+        // bumping the point a little out of the object to prevent self-collision
+        let surface_normal: Vector = self.object.surface_normal(intersection_point);
+        intersection_point + (surface_normal * EPS)
 	}
 }
 

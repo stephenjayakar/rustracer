@@ -97,10 +97,8 @@ impl Raytracer {
         let object = intersection.object();
         let min_dist = intersection.distance();
 		let ray = intersection.ray();
-        let mut intersection_point: Point = ray.get_intersection_point(min_dist);
-        // bumping the point a little out of the object to prevent self-collision
-        let surface_normal: Vector = object.surface_normal(intersection_point);
-        intersection_point = intersection_point + surface_normal * EPS;
+        let intersection_point: Point = intersection.point();
+		let surface_normal: Vector = object.surface_normal(intersection_point);
 
         let emittance = object.material().emittance;
         let num_samples = 64;
@@ -128,10 +126,32 @@ impl Raytracer {
 	}
 
 	fn one_bounce_radiance_importance(&self, intersection: &RayIntersection) -> Spectrum {
-		let l = Spectrum::black();
+		let mut l = Spectrum::black();
+        let object = intersection.object();
+        let emittance = object.material().emittance;
+		let ray = intersection.ray();
+		let intersection_point = intersection.point();
+
 		for light in self.scene.lights() {
-			let num_samples = 4;
-			
+			let num_samples = 8;
+			for _ in 0..num_samples {
+				let random_point = light.random_point();
+				let wo = ray.direction;
+				let wi = (random_point - intersection_point).normalized();
+				let bounced_ray = Ray::new(intersection_point, wi);
+				let other_emittance = self.cast_ray(bounced_ray, 0);
+
+				if !other_emittance.is_black() {
+					let reflected = object.material().bsdf(wi, wo);
+					let color =
+						emittance + other_emittance * reflected;
+					l += color;
+				} else {
+					l += emittance;
+				}
+				// TODO: multiply by probability of casting in that direction
+				// l = l * (1.0 / num_samples as f32);
+			}
 		}
 		l
 	}
@@ -143,7 +163,7 @@ impl Raytracer {
                     self.zero_bounce_radiance(&ray_intersection)
                 }
                 1 => {
-					self.one_bounce_radiance_hemisphere(
+					self.one_bounce_radiance_importance(
 						&ray_intersection
 					)
                 }

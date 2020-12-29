@@ -20,11 +20,6 @@ impl Ray {
             direction: direction.normalized(),
         }
     }
-
-    pub fn get_intersection_point(&self, scalar: f64) -> Point {
-        let scaled_vector = self.direction * scalar;
-        self.origin + scaled_vector
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
