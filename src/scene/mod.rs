@@ -50,7 +50,10 @@ impl Scene {
 		Scene { planes, spheres }
     }
 
+	/// Creates a Cornell box of sorts
     pub fn new_preset() -> Scene {
+		let half_length = 20.0;
+		let box_z_offset = -30.0;
         let red_diffuse_material = Material::new(
             BSDF::Diffuse,
             Spectrum::red(),
@@ -76,41 +79,51 @@ impl Scene {
             Spectrum::black(),
             Spectrum::white(),
         );
+		let light_radius = 7.0;
+		let sphere_radius = 6.0;
         let spheres = vec![
-            Sphere::new(Point::new(0.0, 0.0, -20.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(5.0, 0.0, -20.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(-5.0, 0.0, -20.0), 2.0, grey_diffuse_material),
-            Sphere::new(Point::new(10.0, 0.0, -20.0), 2.0, red_diffuse_material),
-            Sphere::new(Point::new(4.0, 4.0, -18.0), 1.5, white_light_material),
+			Sphere::new(Point::new(-half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - 2.0 * half_length / 3.0),
+						sphere_radius,
+						grey_diffuse_material),
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+			// insert the light at the top of the scene, halfway through the plane
+            Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
         ];
+
         let planes = vec![
 			// bottom wall
 			Plane::new(
-				Point::new(0.0, -5.0, 0.0),
+				Point::new(0.0, -half_length, 0.0),
 				Vector::new(0.0, 1.0, 0.0),
 				grey_diffuse_material,
 			),
 			// left wall
 			Plane::new(
-				Point::new(-14.0, 0.0, 0.0),
+				Point::new(-half_length, 0.0, 0.0),
 				Vector::new(1.0, 0.0, 0.0),
 				red_diffuse_material,
 			),
 			// right wall
 			Plane::new(
-				Point::new(14.0, 0.0, 0.0),
+				Point::new(half_length, 0.0, 0.0),
 				Vector::new(-1.0, 0.0, 0.0),
 				blue_diffuse_material,
 			),
-			// back wall
+			// back wall is only half length depth
 			Plane::new(
-				Point::new(0.0, 0.0, -30.0),
+				Point::new(0.0, 0.0, box_z_offset - half_length),
 				Vector::new(0.0, 0.0, 1.0),
 				green_diffuse_material,
 			),
 			// top wall
 			Plane::new(
-				Point::new(0.0, 9.0, 0.0),
+				Point::new(0.0, half_length, 0.0),
 				Vector::new(0.0, -1.0, 0.0),
 				grey_diffuse_material,
 			),

@@ -73,7 +73,7 @@ impl Raytracer {
     /// Algorithm to covert pixel positions in screen-space to a 3D Vector in world-space.
     /// Assumes the camera is pointing in -z at the origin.
     fn screen_to_world(&self, i: u32, j: u32) -> Vector {
-        let z = 2.0;
+        let z = 1.0;
         let (iw, jh) = (
             (i as f64 + 0.5) / (self.config.screen_width as f64),
             (j as f64 + 0.5) / (self.config.screen_height as f64),
@@ -81,7 +81,7 @@ impl Raytracer {
         let fov = self.config.fov;
         let half_fov = fov * 0.5;
 
-        let start = f64::sin(-half_fov) * z;
+        let start = f64::sin(-half_fov);
         let total = -2.0 * start;
         let xi = start + iw * total;
         let yi = -start - jh * total;
@@ -98,31 +98,30 @@ impl Raytracer {
         let object = intersection.object();
 		let ray = intersection.ray();
         let intersection_point: Point = intersection.point();
-		let surface_normal: Vector = object.surface_normal(intersection_point);
+		let normal: Vector = object.surface_normal(intersection_point);
 
         let emittance = object.material().emittance;
-        let num_samples = 64;
+        let num_samples = 512;
         let mut l = Spectrum::black();
         for _ in 0..num_samples {
             // direct lighting
             let wo = ray.direction;
-            let wi = Vector::random_hemisphere(surface_normal);
+            let wi = Vector::random_hemisphere(normal);
             let bounced_ray = Ray::new(intersection_point, wi);
-
-            let reflected = object.material().bsdf(wi, wo);
-            let other_emittance = self.cast_ray(bounced_ray, 0);
+			let other_emittance = self.cast_ray(bounced_ray, 0);
 
             if !other_emittance.is_black() {
+				let reflected = object.material().bsdf(wi, wo);
+				let cos_theta = f32::abs(wi.dot(normal) as f32);
                 let color =
-                    emittance + other_emittance * reflected;// * f64::abs(wi.z());
+                    other_emittance * reflected * cos_theta;
                 l += color;
-            } else {
-                l += emittance;
-            }
-			// TODO: figure out what's going on with num samples
-			l = l * 2.0 * std::f32::consts::PI;
+			}
+			// TODO: figure out what's going with PDF
 		}
-		l // * (4.0 / NUM_SAMPLES as f64)
+		l = l * 2.0 * std::f32::consts::PI;
+		l = l * (1.0 / num_samples as f32) + emittance;
+		l
 	}
 
 	fn one_bounce_radiance_importance(&self, intersection: &RayIntersection) -> Spectrum {
@@ -131,6 +130,7 @@ impl Raytracer {
         let emittance = object.material().emittance;
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
+		let normal = object.surface_normal(intersection_point);
 		let num_light_samples = 8;
 
 		for light in self.scene.lights() {
@@ -143,8 +143,9 @@ impl Raytracer {
 
 				if !other_emittance.is_black() {
 					let reflected = object.material().bsdf(wi, wo);
+					let cos_theta = f32::abs(wi.dot(normal) as f32);
 					let color =
-						other_emittance * reflected;
+						other_emittance * reflected * cos_theta;
 					l += color;
 				}
 			}
