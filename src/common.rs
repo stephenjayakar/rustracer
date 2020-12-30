@@ -103,7 +103,6 @@ impl Spectrum {
 	}
 }
 
-// note: this will not panic on overflow.  be careful!
 impl Add for Spectrum {
     type Output = Spectrum;
     fn add(self, other: Spectrum) -> Self::Output {
@@ -130,11 +129,9 @@ impl Mul for Spectrum {
 impl Mul<f64> for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: f64) -> Self::Output {
-        // should probably panic if out of range
         let new_r = self.r * other;
         let new_g = self.g * other;
         let new_b = self.b * other;
-        debug_assert!(new_r <= 255.0 && new_g <= 255.0 && new_b <= 255.0);
         Spectrum::new_f(
 			new_r,
 			new_g,
