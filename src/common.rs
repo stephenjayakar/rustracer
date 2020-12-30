@@ -18,13 +18,13 @@ impl Spectrum {
         sdl2::pixels::Color::RGB(self.r(), self.g(), self.b())
     }
 
-    pub const fn new(r: u8, g: u8, b: u8) -> Spectrum {
+    pub fn new(r: u8, g: u8, b: u8) -> Spectrum {
         Spectrum { r: r as f64 / 255.0,
 				   g: g as f64 / 255.0,
 				   b: b as f64 / 255.0}
     }
 
-	pub const fn new_f(r: f64, g: f64, b: f64) -> Spectrum {
+	pub fn new_f(r: f64, g: f64, b: f64) -> Spectrum {
 		Spectrum { r, g, b }
 	}
 
@@ -72,31 +72,31 @@ impl Spectrum {
 	// 	f64::min(1.0, self.b)
     // }
 
-	pub const fn black() -> Spectrum {
+	pub fn black() -> Spectrum {
 		Spectrum::new_f(0.0, 0.0, 0.0)
 	}
 
-	pub const fn white() -> Spectrum {
+	pub fn white() -> Spectrum {
 		Spectrum::new_f(1.0, 1.0, 1.0)
 	}
 
-	pub const fn grey() -> Spectrum {
+	pub fn grey() -> Spectrum {
 		Spectrum::new_f(0.78, 0.78, 0.78)
 	}
 
-	pub const fn red() -> Spectrum {
+	pub fn red() -> Spectrum {
 		Spectrum::new_f(1.0, 0.0, 0.0)
 	}
 
-	pub const fn blue() -> Spectrum {
+	pub fn blue() -> Spectrum {
 		Spectrum::new_f(0.0, 0.0, 1.0)
 	}
 
-	pub const fn green() -> Spectrum {
+	pub fn green() -> Spectrum {
 		Spectrum::new_f(0.0, 1.0, 0.0)
 	}
 
-	pub const fn purple() -> Spectrum {
+	pub fn purple() -> Spectrum {
 		Spectrum::new_f(0.5, 0.0, 0.5)
 	}
 }
