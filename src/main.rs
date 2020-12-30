@@ -68,7 +68,7 @@ impl Raytracer {
 	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
-        let color = self.cast_ray(ray, 1);
+        let color = self.cast_ray(ray, 3);
 		color
 	}
 
@@ -92,17 +92,18 @@ impl Raytracer {
         direction
     }
 
+	/// Radiance from immediate scene intersections.  Should only paint lights.
 	fn zero_bounce_radiance(&self, intersection: &RayIntersection) -> Spectrum {
 		intersection.object().material().emittance
 	}
 
+	/// Simulating one bounce radiance by using hemisphere sampling for the bounce direction.
 	fn one_bounce_radiance_hemisphere(&self, intersection: &RayIntersection) -> Spectrum {
         let object = intersection.object();
 		let ray = intersection.ray();
         let intersection_point: Point = intersection.point();
 		let normal: Vector = object.surface_normal(intersection_point);
 
-        let emittance = object.material().emittance;
         let num_samples = 512;
         let mut l = Spectrum::black();
         for _ in 0..num_samples {
@@ -120,18 +121,18 @@ impl Raytracer {
                 l += color;
 			}
 		}
-		l = l * (1.0 / num_samples as f64) + emittance;
+		l = l * (1.0 / num_samples as f64) + self.zero_bounce_radiance(intersection);
 		l
 	}
 
+	/// One bounce radiance where we prioritize rays that go towards light sources.
 	fn one_bounce_radiance_importance(&self, intersection: &RayIntersection) -> Spectrum {
 		let mut l = Spectrum::black();
         let object = intersection.object();
-        let emittance = object.material().emittance;
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
-		let num_light_samples = 64;
+		let num_light_samples = 8;
 
 		for light in self.scene.lights() {
 			for _ in 0..num_light_samples {
@@ -151,10 +152,43 @@ impl Raytracer {
 			}
 			l = l * (1.0 / num_light_samples as f64);
 		}
-		l += emittance;
+		l += self.zero_bounce_radiance(intersection);
 		l
 	}
 
+	/// Global illumination
+	fn global_illumination(&self, intersection: &RayIntersection, bounces_left: u32) -> Spectrum {
+		let num_samples = 16;
+		let object = intersection.object();
+		let intersection_point = intersection.point();
+		let normal = object.surface_normal(intersection_point);
+		let ray = intersection.ray();
+
+		let mut accumulated_color = Spectrum::black();
+		for _ in 0..num_samples {
+			let wi = Vector::random_hemisphere(normal);
+			let wo = ray.direction;
+			let bounced_ray = Ray::new(intersection_point, wi);
+			let mut color = self.cast_ray(bounced_ray, bounces_left - 1);
+			let pdf = 2.0 * PI;
+
+			if !color.is_black() {
+				let reflected = object.material().bsdf(wi, wo);
+				let cos_theta = f64::abs(wi.dot(normal));
+				color =
+					color * reflected * cos_theta * pdf;
+				accumulated_color += color;
+			}
+		}
+		accumulated_color = accumulated_color * (1.0 / num_samples as f64);
+
+		let mut l = self.zero_bounce_radiance(intersection);
+		l = l + self.one_bounce_radiance_importance(intersection);
+		l = l + accumulated_color;
+		l
+	}
+
+	/// Where the magic happens.
     fn cast_ray(&self, ray: Ray, bounces_left: u32) -> Spectrum {
         if let Some(ray_intersection) = self.scene.intersect(ray) {
             match bounces_left {
@@ -167,8 +201,7 @@ impl Raytracer {
 					)
                 }
                 _ => {
-                    // global illumination
-                    unimplemented!()
+                    self.global_illumination(&ray_intersection, bounces_left)
                 }
             }
         } else {
