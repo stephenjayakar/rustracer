@@ -53,7 +53,7 @@ impl Scene {
 	/// Creates a Cornell box of sorts
     pub fn new_preset() -> Scene {
 		let half_length = 20.0;
-		let box_z_offset = -30.0;
+		let box_z_offset = -50.0;
         let red_diffuse_material = Material::new(
             BSDF::Diffuse,
             Spectrum::red(),
