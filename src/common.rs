@@ -3,8 +3,6 @@ extern crate sdl2;
 use std::ops::{Add, AddAssign, Mul};
 
 pub const GENERIC_ERROR: &str = "Something went wrong, sorry!";
-pub const DEFAULT_SCREEN_WIDTH: u32 = 1200;
-pub const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
 pub const EPS: f64 = 0.0000001;
 
 // struct that is essentially a wrapper on top of SDL2::Color, but allows accumulation

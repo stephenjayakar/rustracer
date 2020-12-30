@@ -14,28 +14,76 @@ mod common;
 mod scene;
 
 use canvas::Canvas;
-use common::{Spectrum, DEFAULT_SCREEN_HEIGHT, DEFAULT_SCREEN_WIDTH};
+use common::Spectrum;
 use scene::{Point, Ray, Scene, Vector, RayIntersection};
 
 use std::time::Instant;
+
+const DEFAULT_SCREEN_WIDTH: u32 = 1200;
+const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
+const DEFAULT_FOV_DEGREES: f64 = 90.0;
+const DEFAULT_GI_SAMPLES: u32 = 4;
+const DEFAULT_IMPORTANCE_SAMPLES: u32 = 64;
+const DEFAULT_BOUNCES: u32 = 3;
 
 struct Config {
     screen_width: u32,
     screen_height: u32,
     fov: f64,
     origin: Point,
+	gi_samples: u32,
+	importance_samples: u32,
+	bounces: u32,
 }
 
 impl Config {
     // fov is in degrees here
-    fn new(width: u32, height: u32, fov_degrees: f64) -> Config {
+    fn new(width: u32,
+		   height: u32,
+		   fov_degrees: f64,
+		   gi_samples: u32,
+		   importance_samples: u32,
+		   bounces: u32,
+	) -> Config {
         Config {
             screen_width: width,
             screen_height: height,
             fov: f64::to_radians(fov_degrees),
             origin: Point::new(0.0, 0.0, 0.0),
+			gi_samples,
+			importance_samples,
+			bounces,
         }
     }
+
+	fn from_args(args: Vec<String>) -> Config {
+		match args.len() {
+			4 => {
+				let gi_samples = args[1].parse().unwrap();
+				let importance_samples = args[2].parse().unwrap();
+				let bounces = args[3].parse().unwrap();
+
+				Config::new(
+					DEFAULT_SCREEN_WIDTH,
+					DEFAULT_SCREEN_HEIGHT,
+					DEFAULT_FOV_DEGREES,
+					gi_samples,
+					importance_samples,
+					bounces,
+				)
+			}
+			_ => {
+				Config::new(
+					DEFAULT_SCREEN_WIDTH,
+					DEFAULT_SCREEN_HEIGHT,
+					DEFAULT_FOV_DEGREES,
+					DEFAULT_GI_SAMPLES,
+					DEFAULT_IMPORTANCE_SAMPLES,
+					DEFAULT_BOUNCES,
+				)
+			}
+		}
+	}
 }
 
 struct Raytracer {
@@ -68,7 +116,7 @@ impl Raytracer {
 	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
-        let color = self.cast_ray(ray, 3);
+        let color = self.cast_ray(ray, self.config.bounces);
 		color
 	}
 
@@ -104,6 +152,7 @@ impl Raytracer {
         let intersection_point: Point = intersection.point();
 		let normal: Vector = object.surface_normal(intersection_point);
 
+		// TODO: make this configurable i guess...
         let num_samples = 512;
         let mut l = Spectrum::black();
         for _ in 0..num_samples {
@@ -132,7 +181,7 @@ impl Raytracer {
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
-		let num_light_samples = 8;
+		let num_light_samples = self.config.importance_samples;
 
 		for light in self.scene.lights() {
 			for _ in 0..num_light_samples {
@@ -158,7 +207,7 @@ impl Raytracer {
 
 	/// Global illumination
 	fn global_illumination(&self, intersection: &RayIntersection, bounces_left: u32) -> Spectrum {
-		let num_samples = 16;
+		let num_samples = self.config.gi_samples;
 		let object = intersection.object();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
@@ -262,35 +311,11 @@ impl Raytracer {
 	}
 }
 
-fn parse_args(args: Vec<String>) -> Option<(u32, u32)> {
-    match args.len() {
-        3 => {
-            let width = args
-                .get(1)
-                .unwrap()
-                .parse()
-                .expect("passed in invalid width");
-            let height = args
-                .get(2)
-                .unwrap()
-                .parse()
-                .expect("passed in invalid width");
-            Some((width, height))
-        }
-        _ => None,
-    }
-}
-
 fn main() {
     // parse args
     let args: Vec<String> = env::args().collect();
-    let (screen_width, screen_height) = match parse_args(args) {
-        None => (DEFAULT_SCREEN_WIDTH, DEFAULT_SCREEN_HEIGHT),
-        Some((width, height)) => (width, height),
-    };
+	let config = Config::from_args(args);
 
-    // set up raytracer
-    let config = Config::new(screen_width, screen_height, 90.0);
     let raytracer = Raytracer::new(config);
 	// raytracer.test();
     raytracer.start();
