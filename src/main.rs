@@ -34,6 +34,7 @@ struct Config {
 	gi_samples: u32,
 	importance_samples: u32,
 	bounces: u32,
+	debug: bool,
 }
 
 impl Config {
@@ -44,6 +45,7 @@ impl Config {
 		   gi_samples: u32,
 		   importance_samples: u32,
 		   bounces: u32,
+		   debug: bool,
 	) -> Config {
         Config {
             screen_width: width,
@@ -53,6 +55,7 @@ impl Config {
 			gi_samples,
 			importance_samples,
 			bounces,
+			debug,
         }
     }
 
@@ -70,8 +73,22 @@ impl Config {
 					gi_samples,
 					importance_samples,
 					bounces,
+					false,
 				)
 			}
+			2 => {
+				let debug = args[1] == "d";
+				Config::new(
+					DEFAULT_SCREEN_WIDTH,
+					DEFAULT_SCREEN_HEIGHT,
+					DEFAULT_FOV_DEGREES,
+					DEFAULT_GI_SAMPLES,
+					DEFAULT_IMPORTANCE_SAMPLES,
+					DEFAULT_BOUNCES,
+					debug,
+				)
+
+			},
 			_ => {
 				Config::new(
 					DEFAULT_SCREEN_WIDTH,
@@ -80,6 +97,7 @@ impl Config {
 					DEFAULT_GI_SAMPLES,
 					DEFAULT_IMPORTANCE_SAMPLES,
 					DEFAULT_BOUNCES,
+					false,
 				)
 			}
 		}
@@ -271,8 +289,8 @@ impl Raytracer {
 	fn debug_render_helper(&self, i: u32, j: u32) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
-		if let Some(_) = self.scene.intersect(ray) {
-			Spectrum::grey()
+		if let Some(ri) = self.scene.intersect(ray) {
+			Spectrum::white() * (1.0 / f64::powf(2.0, ri.distance() / 10.0))
 		} else {
 			Spectrum::black()
 		}
@@ -295,7 +313,11 @@ impl Raytracer {
 
     pub fn start(&self) {
 		let start = Instant::now();
-        self.render();
+		if !self.config.debug {
+			self.render();
+		} else {
+			self.debug_render();
+		}
 		let duration = start.elapsed();
 		println!("Rendering took: {:?}", duration);
 		self.draw_axis();
