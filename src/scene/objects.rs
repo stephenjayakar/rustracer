@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use super::super::common::Spectrum;
 use crate::{Point, Ray, Vector};
 
@@ -52,7 +54,7 @@ impl Material {
 
     pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
         match self.bsdf {
-            BSDF::Diffuse => self.reflectance * (1.0 / std::f32::consts::PI),
+            BSDF::Diffuse => self.reflectance * (1.0 / PI),
         }
     }
 }
@@ -111,7 +113,7 @@ impl Object for Sphere {
 		let d_c = (self.center - p).norm();
 		let d_s = ps.norm();
 		let cos_a = (d_c.powi(2) + self.radius.powi(2) - d_s.powi(2)) / (2.0 * d_c * self.radius);
-		let pdf = 2.0 * std::f64::consts::PI * (1.0 - cos_a);
+		let pdf = 2.0 * PI * (1.0 - cos_a);
 		LightSample {
 			pdf,
 			wi,

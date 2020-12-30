@@ -1,7 +1,9 @@
 #![allow(dead_code)]
+#![feature(const_fn)]
 #![feature(clamp)]
 
 use std::env;
+use std::f64::consts::PI;
 
 extern crate sdl2;
 
@@ -112,13 +114,13 @@ impl Raytracer {
 
             if !other_emittance.is_black() {
 				let reflected = object.material().bsdf(wi, wo);
-				let cos_theta = f32::abs(wi.dot(normal) as f32);
+				let cos_theta = f64::abs(wi.dot(normal));
                 let color =
-                    other_emittance * reflected * cos_theta * 2.0 * std::f32::consts::PI;
+                    other_emittance * reflected * cos_theta * 2.0 * PI;
                 l += color;
 			}
 		}
-		l = l * (1.0 / num_samples as f32) + emittance;
+		l = l * (1.0 / num_samples as f64) + emittance;
 		l
 	}
 
@@ -141,13 +143,13 @@ impl Raytracer {
 
 				if !other_emittance.is_black() {
 					let reflected = object.material().bsdf(wi, wo);
-					let cos_theta = f32::abs(wi.dot(normal) as f32);
+					let cos_theta = f64::abs(wi.dot(normal));
 					let color =
-						other_emittance * reflected * cos_theta * pdf as f32;
+						other_emittance * reflected * cos_theta * pdf;
 					l += color;
 				}
 			}
-			l = l * (1.0 / num_light_samples as f32);
+			l = l * (1.0 / num_light_samples as f64);
 		}
 		l += emittance;
 		l

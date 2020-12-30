@@ -10,9 +10,9 @@ pub const EPS: f64 = 0.0000001;
 // struct that is essentially a wrapper on top of SDL2::Color, but allows accumulation
 #[derive(Clone, Copy, Debug)]
 pub struct Spectrum {
-    r: f32,
-    g: f32,
-    b: f32,
+    r: f64,
+    g: f64,
+    b: f64,
 }
 
 impl Spectrum {
@@ -20,33 +20,33 @@ impl Spectrum {
         sdl2::pixels::Color::RGB(self.r(), self.g(), self.b())
     }
 
-    pub fn new(r: u32, g: u32, b: u32) -> Spectrum {
-        Spectrum { r: r as f32 / 255.0,
-				   g: g as f32 / 255.0,
-				   b: b as f32 / 255.0}
+    pub const fn new(r: u8, g: u8, b: u8) -> Spectrum {
+        Spectrum { r: r as f64 / 255.0,
+				   g: g as f64 / 255.0,
+				   b: b as f64 / 255.0}
     }
 
-	const fn new_f(r: f32, g: f32, b: f32) -> Spectrum {
+	pub const fn new_f(r: f64, g: f64, b: f64) -> Spectrum {
 		Spectrum { r, g, b }
 	}
 
     pub fn is_black(&self) -> bool {
 		let color = self.r + self.g + self.b;
-		color <= 0.0 + EPS as f32
+		color <= 0.0 + EPS as f64
     }
 
-    fn to_u8(val: f32) -> u8 {
+    fn to_u8(val: f64) -> u8 {
         // maybe make this debug somehow?
-        if val > std::u8::MAX as f32 {
+        if val > std::u8::MAX as f64 {
             std::u8::MAX
         } else {
             val as u8
         }
     }
 
-    fn to_color(intensity: f32) -> u8 {
+    fn to_color(intensity: f64) -> u8 {
 		// pow(...) is gamma correction
-        Spectrum::to_u8(f32::powf(intensity.clamp(0.0, 1.0), 1.0 / 2.2) * 255.0)
+        Spectrum::to_u8(f64::powf(intensity.clamp(0.0, 1.0), 1.0 / 2.2) * 255.0)
     }
 
     pub fn r(&self) -> u8 {
@@ -62,16 +62,16 @@ impl Spectrum {
     }
 
 	// Unsure how I feel about these, as we're clamping on return
-    // fn ri(&self) -> f32 {
-	// 	f32::min(1.0, self.r)
+    // fn ri(&self) -> f64 {
+	// 	f64::min(1.0, self.r)
     // }
 
-    // fn gi(&self) -> f32 {
-	// 	f32::min(1.0, self.g)
+    // fn gi(&self) -> f64 {
+	// 	f64::min(1.0, self.g)
     // }
 
-    // fn bi(&self) -> f32 {
-	// 	f32::min(1.0, self.b)
+    // fn bi(&self) -> f64 {
+	// 	f64::min(1.0, self.b)
     // }
 
 	pub const fn black() -> Spectrum {
@@ -127,9 +127,9 @@ impl Mul for Spectrum {
     }
 }
 
-impl Mul<f32> for Spectrum {
+impl Mul<f64> for Spectrum {
     type Output = Spectrum;
-    fn mul(self, other: f32) -> Self::Output {
+    fn mul(self, other: f64) -> Self::Output {
         // should probably panic if out of range
         let new_r = self.r * other;
         let new_g = self.g * other;

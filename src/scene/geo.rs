@@ -1,9 +1,11 @@
 extern crate nalgebra as na;
 
+use std::ops::{Add, Mul, Sub};
+use std::f64::consts::PI;
+
 use na::base::{Matrix3, Vector3};
 use na::geometry::Point3;
 
-use std::ops::{Add, Mul, Sub};
 use crate::common::EPS;
 
 #[derive(Clone, Copy, Debug)]
@@ -78,7 +80,7 @@ impl Vector {
         let xi2 = fastrand::f64();
 
         let theta = f64::acos(xi1);
-        let phi = 2.0 * std::f64::consts::PI * xi2;
+        let phi = 2.0 * PI * xi2;
         let xs = f64::sin(theta) * f64::cos(phi);
         let ys = f64::sin(theta) * f64::sin(phi);
         let zs = f64::cos(theta);
@@ -114,7 +116,7 @@ impl Vector {
         let xi1 = fastrand::f64();
         let xi2 = fastrand::f64();
 
-        let theta = 2.0 * std::f64::consts::PI * xi1;
+        let theta = 2.0 * PI * xi1;
         let phi = f64::acos(1.0 - 2.0 * xi2);
         let xs = f64::sin(phi) * f64::cos(theta);
         let ys = f64::sin(phi) * f64::sin(theta);
