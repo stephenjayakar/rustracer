@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 #![feature(const_fn)]
-#![feature(clamp)]
 
 use std::env;
 use std::f64::consts::PI;
@@ -8,6 +7,8 @@ use std::f64::consts::PI;
 extern crate sdl2;
 
 use rayon::prelude::*;
+
+use clap::{Arg, ArgMatches, App};
 
 mod canvas;
 mod common;
@@ -59,48 +60,53 @@ impl Config {
         }
     }
 
-	fn from_args(args: Vec<String>) -> Config {
-		match args.len() {
-			4 => {
-				let gi_samples = args[1].parse().unwrap();
-				let importance_samples = args[2].parse().unwrap();
-				let bounces = args[3].parse().unwrap();
+	fn from_args() -> Config {
+		let matches = App::new("rustracer")
+			.arg(Arg::with_name("g")
+				 .short("g")
+				 .takes_value(true)
+				 .help("Sets how many global illumination samples to do"))
+			.arg(Arg::with_name("l")
+				 .short("l")
+				 .takes_value(true)
+				 .help("Sets how many light samples to do for one-bounce radiance"))
+			.arg(Arg::with_name("b")
+				 .short("b")
+				 .takes_value(true)
+				 .help("Sets how many bounces to simulate"))
+			.arg(Arg::with_name("w")
+				 .short("w")
+				 .takes_value(true)
+				 .help("Screen width"))
+			.arg(Arg::with_name("h")
+				 .short("h")
+				 .takes_value(true)
+				 .help("Screen height"))
+			.arg(Arg::with_name("d")
+				 .short("d")
+				 .help("Debug mode"))
+			.get_matches();
 
-				Config::new(
-					DEFAULT_SCREEN_WIDTH,
-					DEFAULT_SCREEN_HEIGHT,
+		let light_samples = matches.value_of("g")
+			.map_or(DEFAULT_GI_SAMPLES, |arg| arg.parse().unwrap());
+		let gi_samples = matches.value_of("l")
+			.map_or(DEFAULT_IMPORTANCE_SAMPLES, |arg| arg.parse().unwrap());
+		let bounces = matches.value_of("b")
+			.map_or(DEFAULT_BOUNCES, |arg| arg.parse().unwrap());
+		let width = matches.value_of("w")
+			.map_or(DEFAULT_SCREEN_WIDTH, |arg| arg.parse().unwrap());
+		let height = matches.value_of("h")
+			.map_or(DEFAULT_SCREEN_HEIGHT, |arg| arg.parse().unwrap());
+		let debug = matches.is_present("d");
+
+		Config::new(width,
+					height,
 					DEFAULT_FOV_DEGREES,
 					gi_samples,
-					importance_samples,
+					light_samples,
 					bounces,
-					false,
-				)
-			}
-			2 => {
-				let debug = args[1] == "d";
-				Config::new(
-					DEFAULT_SCREEN_WIDTH,
-					DEFAULT_SCREEN_HEIGHT,
-					DEFAULT_FOV_DEGREES,
-					DEFAULT_GI_SAMPLES,
-					DEFAULT_IMPORTANCE_SAMPLES,
-					DEFAULT_BOUNCES,
 					debug,
-				)
-
-			},
-			_ => {
-				Config::new(
-					DEFAULT_SCREEN_WIDTH,
-					DEFAULT_SCREEN_HEIGHT,
-					DEFAULT_FOV_DEGREES,
-					DEFAULT_GI_SAMPLES,
-					DEFAULT_IMPORTANCE_SAMPLES,
-					DEFAULT_BOUNCES,
-					false,
-				)
-			}
-		}
+		)
 	}
 }
 
@@ -335,8 +341,7 @@ impl Raytracer {
 
 fn main() {
     // parse args
-    let args: Vec<String> = env::args().collect();
-	let config = Config::from_args(args);
+	let config = Config::from_args();
 
     let raytracer = Raytracer::new(config);
 	// raytracer.test();
