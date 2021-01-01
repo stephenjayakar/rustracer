@@ -37,6 +37,7 @@ struct Config {
 	bounces: u32,
 	debug: bool,
 	high_dpi: bool,
+	image_mode: bool,
 }
 
 impl Config {
@@ -65,13 +66,11 @@ impl Config {
 			.arg(Arg::with_name("debug")
 				 .short("d")
 				 .help("Debug mode"))
-			// TODO: replace this with some type of "no-sdl" mode.
-			// .arg(Arg::with_name("filename")
-			// 	 .short("f")
-			// 	 .takes_value(true)
-			// 	 .help("Dump to a bitmap file at the provided path.  Note: does not currently display the canvas at all."))
 			.arg(Arg::with_name("high_dpi")
 				 .long("high-dpi"))
+			.arg(Arg::with_name("image_mode")
+				 .long("image-mode")
+				 .short("i"))
 			.get_matches();
 
 		let light_samples = matches.value_of("g")
@@ -87,6 +86,7 @@ impl Config {
 		let debug = matches.is_present("debug");
 		// let filename = matches.value_of("filename").map(|f| String::from(f));
 		let high_dpi = matches.is_present("high_dpi");
+		let image_mode = matches.is_present("image_mode");
 
 		Config {
 			screen_width,
@@ -97,8 +97,8 @@ impl Config {
 			light_samples,
 			bounces,
 			debug,
-			// filename,
 			high_dpi,
+			image_mode
 		}
 	}
 }
@@ -111,7 +111,7 @@ struct Raytracer {
 
 impl Raytracer {
     fn new(config: Config) -> Raytracer {
-        let canvas = Canvas::new(config.screen_width, config.screen_height, config.high_dpi);
+        let canvas = Canvas::new(config.screen_width, config.screen_height, config.high_dpi, config.image_mode);
         Raytracer {
             config,
             canvas,
