@@ -83,7 +83,6 @@ impl Config {
 		let screen_height = matches.value_of("h")
 			.map_or(DEFAULT_SCREEN_HEIGHT, |arg| arg.parse().unwrap());
 		let debug = matches.is_present("debug");
-		// let filename = matches.value_of("filename").map(|f| String::from(f));
 		let high_dpi = matches.is_present("high_dpi");
 		let image_mode = matches.is_present("image_mode");
 
