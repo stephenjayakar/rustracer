@@ -24,7 +24,7 @@ const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
 const DEFAULT_FOV_DEGREES: f64 = 90.0;
 const DEFAULT_GI_SAMPLES: u32 = 4;
-const DEFAULT_IMPORTANCE_SAMPLES: u32 = 64;
+const DEFAULT_LIGHT_SAMPLES: u32 = 64;
 const DEFAULT_BOUNCES: u32 = 3;
 
 struct Config {
@@ -33,33 +33,14 @@ struct Config {
     fov: f64,
     origin: Point,
 	gi_samples: u32,
-	importance_samples: u32,
+	light_samples: u32,
 	bounces: u32,
 	debug: bool,
+	filename: Option<String>,
+	high_dpi: bool,
 }
 
 impl Config {
-    // fov is in degrees here
-    fn new(width: u32,
-		   height: u32,
-		   fov_degrees: f64,
-		   gi_samples: u32,
-		   importance_samples: u32,
-		   bounces: u32,
-		   debug: bool,
-	) -> Config {
-        Config {
-            screen_width: width,
-            screen_height: height,
-            fov: f64::to_radians(fov_degrees),
-            origin: Point::new(0.0, 0.0, 0.0),
-			gi_samples,
-			importance_samples,
-			bounces,
-			debug,
-        }
-    }
-
 	fn from_args() -> Config {
 		let matches = App::new("rustracer")
 			.arg(Arg::with_name("g")
@@ -82,31 +63,43 @@ impl Config {
 				 .short("h")
 				 .takes_value(true)
 				 .help("Screen height"))
-			.arg(Arg::with_name("d")
+			.arg(Arg::with_name("debug")
 				 .short("d")
 				 .help("Debug mode"))
+			.arg(Arg::with_name("filename")
+				 .short("f")
+				 .takes_value(true)
+				 .help("Dump to a bitmap file at the provided path.  Note: does not currently display the canvas at all."))
+			.arg(Arg::with_name("high_dpi")
+				 .long("high-dpi"))
 			.get_matches();
 
 		let light_samples = matches.value_of("g")
 			.map_or(DEFAULT_GI_SAMPLES, |arg| arg.parse().unwrap());
 		let gi_samples = matches.value_of("l")
-			.map_or(DEFAULT_IMPORTANCE_SAMPLES, |arg| arg.parse().unwrap());
+			.map_or(DEFAULT_LIGHT_SAMPLES, |arg| arg.parse().unwrap());
 		let bounces = matches.value_of("b")
 			.map_or(DEFAULT_BOUNCES, |arg| arg.parse().unwrap());
-		let width = matches.value_of("w")
+		let screen_width = matches.value_of("w")
 			.map_or(DEFAULT_SCREEN_WIDTH, |arg| arg.parse().unwrap());
-		let height = matches.value_of("h")
+		let screen_height = matches.value_of("h")
 			.map_or(DEFAULT_SCREEN_HEIGHT, |arg| arg.parse().unwrap());
-		let debug = matches.is_present("d");
+		let debug = matches.is_present("debug");
+		let filename = matches.value_of("filename").map(|f| String::from(f));
+		let high_dpi = matches.is_present("high_dpi");
 
-		Config::new(width,
-					height,
-					DEFAULT_FOV_DEGREES,
-					gi_samples,
-					light_samples,
-					bounces,
-					debug,
-		)
+		Config {
+			screen_width,
+			screen_height,
+			fov: f64::to_radians(DEFAULT_FOV_DEGREES),
+			origin: Point::new(0.0, 0.0, 0.0),
+			gi_samples,
+			light_samples,
+			bounces,
+			debug,
+			filename,
+			high_dpi,
+		}
 	}
 }
 
@@ -118,7 +111,7 @@ struct Raytracer {
 
 impl Raytracer {
     fn new(config: Config) -> Raytracer {
-        let canvas = Canvas::new(config.screen_width, config.screen_height);
+        let canvas = Canvas::new(config.screen_width, config.screen_height, config.high_dpi);
         Raytracer {
             config,
             canvas,
@@ -205,7 +198,7 @@ impl Raytracer {
 		let ray = intersection.ray();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
-		let num_light_samples = self.config.importance_samples;
+		let num_light_samples = self.config.light_samples;
 
 		for light in self.scene.lights() {
 			for _ in 0..num_light_samples {

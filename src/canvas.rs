@@ -21,11 +21,12 @@ pub struct Canvas {
     sender: Sender<DrawPixelMessage>,
     width: u32,
     height: u32,
+	high_dpi: bool,
 }
 
 impl Canvas {
     /// Initializes the canvas with concurrency constructs.
-    pub fn new(width: u32, height: u32) -> Canvas {
+    pub fn new(width: u32, height: u32, high_dpi: bool) -> Canvas {
         // TODO: make this bounded for performance reasons
         let (s, r) = unbounded::<DrawPixelMessage>();
         Canvas {
@@ -33,6 +34,7 @@ impl Canvas {
             receiver: r,
             width,
             height,
+			high_dpi,
         }
     }
 
@@ -41,8 +43,9 @@ impl Canvas {
         let sdl_context = sdl2::init().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
+		let divider = if self.high_dpi { 2 } else { 1 };
         let window = video_subsystem
-            .window("rustracer", self.width / 2, self.height / 2)
+            .window("rustracer", self.width / divider, self.height / divider)
             .allow_highdpi()
             .build()
             .unwrap();
@@ -77,8 +80,13 @@ impl Canvas {
                     draw_pixel_message.s,
                 );
                 canvas.set_draw_color(s.to_sdl2_color());
+				let square_size = if self.high_dpi {
+					2
+				} else {
+					1
+				};
                 canvas
-                    .fill_rect(Rect::new(x as i32, y as i32, 2, 2))
+                    .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
                     .expect("failed to draw rectangle");
             }
             canvas.present();
