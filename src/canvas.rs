@@ -106,7 +106,6 @@ impl Canvas {
 
         // canvas loop
         'running: loop {
-			let mut dump_to_screenshot = false;
             // process events
             for event in event_pump.poll_iter() {
                 match event {
@@ -115,20 +114,12 @@ impl Canvas {
                         keycode: Some(Keycode::Escape),
                         ..
                     } => break 'running,
-					Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-						dump_to_screenshot = true
-					},
 					Event::MouseButtonDown {
 						x, y, ..
 					} => println!("Mouse button down at coordinates ({}, {})", x, y),
                     _ => {},
                 }
             }
-			// TODO: consider fixing this.  Right now draws black.
-			if dump_to_screenshot {
-				self.save_canvas(&canvas);
-				dump_to_screenshot = false;
-			}
             thread::sleep(Duration::from_millis(REFRESH_RATE));
         }
     }

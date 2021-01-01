@@ -1,14 +1,13 @@
 #![allow(dead_code)]
 #![feature(const_fn)]
 
-use std::env;
 use std::f64::consts::PI;
 
 extern crate sdl2;
 
 use rayon::prelude::*;
 
-use clap::{Arg, ArgMatches, App};
+use clap::{Arg, App};
 
 mod canvas;
 mod common;
