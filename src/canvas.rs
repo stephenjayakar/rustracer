@@ -7,8 +7,9 @@ use sdl2::rect::Rect;
 extern crate crossbeam_channel;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 
+use std::path::Path;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use crate::common::Spectrum;
 
@@ -55,23 +56,19 @@ impl Canvas {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
         canvas.present();
+		let mut dump_to_screenshot = false;
 
         // canvas loop
         'running: loop {
-            // process events
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::Quit { .. }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Escape),
-                        ..
-                    } => break 'running,
-					Event::MouseButtonDown {
-						x, y, ..
-					} => println!("Mouse button down at coordinates ({}, {})", x, y),
-                    _ => {},
-                }
-            }
+			// TODO: make this some type of message that we send to the Canvas
+			if dump_to_screenshot {
+				let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+				let path_string = format!("./{}.bmp", timestamp.as_secs().to_string());
+				println!("Saving with filename {}", path_string);
+				let path = Path::new(&path_string);
+				canvas.window().surface(&event_pump).unwrap().save_bmp(path);
+				dump_to_screenshot = false;
+			}
             // process draw pixel messages
             for draw_pixel_message in self.receiver.try_iter() {
                 let (x, y, s) = (
@@ -88,6 +85,23 @@ impl Canvas {
                 canvas
                     .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
                     .expect("failed to draw rectangle");
+            }
+            // process events
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::Quit { .. }
+                    | Event::KeyDown {
+                        keycode: Some(Keycode::Escape),
+                        ..
+                    } => break 'running,
+					Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+						dump_to_screenshot = true
+					},
+					Event::MouseButtonDown {
+						x, y, ..
+					} => println!("Mouse button down at coordinates ({}, {})", x, y),
+                    _ => {},
+                }
             }
             canvas.present();
             thread::sleep(Duration::from_millis(REFRESH_RATE));

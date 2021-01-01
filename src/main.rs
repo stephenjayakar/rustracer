@@ -36,7 +36,6 @@ struct Config {
 	light_samples: u32,
 	bounces: u32,
 	debug: bool,
-	filename: Option<String>,
 	high_dpi: bool,
 }
 
@@ -66,10 +65,11 @@ impl Config {
 			.arg(Arg::with_name("debug")
 				 .short("d")
 				 .help("Debug mode"))
-			.arg(Arg::with_name("filename")
-				 .short("f")
-				 .takes_value(true)
-				 .help("Dump to a bitmap file at the provided path.  Note: does not currently display the canvas at all."))
+			// TODO: replace this with some type of "no-sdl" mode.
+			// .arg(Arg::with_name("filename")
+			// 	 .short("f")
+			// 	 .takes_value(true)
+			// 	 .help("Dump to a bitmap file at the provided path.  Note: does not currently display the canvas at all."))
 			.arg(Arg::with_name("high_dpi")
 				 .long("high-dpi"))
 			.get_matches();
@@ -85,7 +85,7 @@ impl Config {
 		let screen_height = matches.value_of("h")
 			.map_or(DEFAULT_SCREEN_HEIGHT, |arg| arg.parse().unwrap());
 		let debug = matches.is_present("debug");
-		let filename = matches.value_of("filename").map(|f| String::from(f));
+		// let filename = matches.value_of("filename").map(|f| String::from(f));
 		let high_dpi = matches.is_present("high_dpi");
 
 		Config {
@@ -97,7 +97,7 @@ impl Config {
 			light_samples,
 			bounces,
 			debug,
-			filename,
+			// filename,
 			high_dpi,
 		}
 	}
