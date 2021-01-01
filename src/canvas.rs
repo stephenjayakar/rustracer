@@ -7,8 +7,13 @@ use sdl2::rect::Rect;
 extern crate crossbeam_channel;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 
+extern crate png;
+
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use crate::common::Spectrum;
 
@@ -22,11 +27,12 @@ pub struct Canvas {
     width: u32,
     height: u32,
 	high_dpi: bool,
+	image_mode: bool,
 }
 
 impl Canvas {
     /// Initializes the canvas with concurrency constructs.
-    pub fn new(width: u32, height: u32, high_dpi: bool) -> Canvas {
+    pub fn new(width: u32, height: u32, high_dpi: bool, image_mode: bool) -> Canvas {
         // TODO: make this bounded for performance reasons
         let (s, r) = unbounded::<DrawPixelMessage>();
         Canvas {
@@ -35,8 +41,27 @@ impl Canvas {
             width,
             height,
 			high_dpi,
+			image_mode,
         }
     }
+
+	/// Saves the canvas to a png file.  The filename is the '{current UNIX timestamp}.png'.
+	fn save_canvas(&self, canvas: &sdl2::render::Canvas<sdl2::video::Window>) {
+		let pixels = canvas.read_pixels(None, sdl2::pixels::PixelFormatEnum::RGB24)
+			.expect("Failed to read pixels from canvas");
+		let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+		let path_string = format!("./{}.png", timestamp.as_secs().to_string());
+		println!("Saving with filename {}", path_string);
+		let path = Path::new(&path_string);
+		let file = File::create(path).unwrap();
+		let ref mut w = BufWriter::new(file);
+
+		let mut encoder = png::Encoder::new(w, self.width, self.height);
+		encoder.set_color(png::ColorType::RGB);
+		encoder.set_depth(png::BitDepth::Eight);
+		let mut writer = encoder.write_header().unwrap();
+		writer.write_image_data(&pixels).expect("Failed to write canvas to png");
+	}
 
     /// Starts a new canvas context that takes over the main thread.
     pub fn start(&self) {
@@ -54,7 +79,30 @@ impl Canvas {
         let mut canvas = window.into_canvas().build().unwrap();
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
-        canvas.present();
+
+        // process draw pixel messages
+        for draw_pixel_message in self.receiver.try_iter() {
+            let (x, y, s) = (
+                draw_pixel_message.x,
+                draw_pixel_message.y,
+                draw_pixel_message.s,
+            );
+            canvas.set_draw_color(s.to_sdl2_color());
+			let square_size = if self.high_dpi {
+				2
+			} else {
+				1
+			};
+            canvas
+                .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
+                .expect("failed to draw rectangle");
+        }
+		if self.image_mode {
+			self.save_canvas(&canvas);
+			return;
+		} else {
+			canvas.present();
+		}
 
         // canvas loop
         'running: loop {
@@ -72,24 +120,6 @@ impl Canvas {
                     _ => {},
                 }
             }
-            // process draw pixel messages
-            for draw_pixel_message in self.receiver.try_iter() {
-                let (x, y, s) = (
-                    draw_pixel_message.x,
-                    draw_pixel_message.y,
-                    draw_pixel_message.s,
-                );
-                canvas.set_draw_color(s.to_sdl2_color());
-				let square_size = if self.high_dpi {
-					2
-				} else {
-					1
-				};
-                canvas
-                    .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
-                    .expect("failed to draw rectangle");
-            }
-            canvas.present();
             thread::sleep(Duration::from_millis(REFRESH_RATE));
         }
     }
