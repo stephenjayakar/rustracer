@@ -64,11 +64,13 @@ impl Config {
 				 .help("Screen height"))
 			.arg(Arg::with_name("debug")
 				 .short("d")
-				 .help("Debug mode"))
+				 .help("Debug mode, where only intersections are shown"))
 			.arg(Arg::with_name("high_dpi")
-				 .long("high-dpi"))
+				 .long("high-dpi")
+				 .help("Basically for handling that OSX does display scaling weird"))
 			.arg(Arg::with_name("image_mode")
 				 .long("image-mode")
+				 .help("Mode that doesn't display anything to screen, but rather just dumps it to a png")
 				 .short("i"))
 			.get_matches();
 
