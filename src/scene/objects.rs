@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
 use super::super::common::Spectrum;
-use crate::{Point, Ray, Vector};
+use super::{Point, Ray, Vector};
 
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
