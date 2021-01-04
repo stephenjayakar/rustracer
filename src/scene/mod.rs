@@ -133,22 +133,22 @@ impl Scene {
 				grey_diffuse_material,
 			),
 			Triangle::new(
-				p4,
-				p5,
 				p7,
+				p5,
+				p4,
 				grey_diffuse_material,
 			),
 			// // back wall
 			Triangle::new(
-				p1,
 				p4,
+				p1,
 				p2,
 				green_diffuse_material,
 			),
 			Triangle::new(
 				p2,
-				p4,
 				p5,
+				p4,
 				green_diffuse_material,
 			),
 			// left wall was red
