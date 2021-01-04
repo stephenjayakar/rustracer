@@ -9,8 +9,7 @@ use objects::{Material, Object, Plane, Sphere, BSDF};
 use crate::common::{Spectrum, GENERIC_ERROR, EPS};
 
 pub struct Scene {
-    planes: Vec<Plane>,
-    spheres: Vec<Sphere>,
+	objects: Vec<Box<dyn Object>>,
 	// TODO: Figure out how to cache this in a thread safe way
 	// lights: Vec<&'a dyn Object>,
 }
@@ -47,7 +46,14 @@ impl<'a> RayIntersection<'a> {
 
 impl Scene {
     fn new(planes: Vec<Plane>, spheres: Vec<Sphere>) -> Scene {
-		Scene { planes, spheres }
+		let mut objects = Vec::<Box<dyn Object>>::new();
+		for plane in planes {
+			objects.push(Box::new(plane));
+		}
+		for sphere in spheres {
+			objects.push(Box::new(sphere));
+		}
+		Scene { objects }
     }
 
 	/// Creates a Cornell box of sorts
@@ -131,22 +137,8 @@ impl Scene {
         Scene::new(planes, spheres)
     }
 
-    // allows indexing across multiple object data structures
-    fn get_object_by_index(&self, index: usize) -> &dyn Object {
-        let planes_len = self.planes.len();
-        let spheres_len = self.spheres.len();
-
-        if index < planes_len {
-            self.planes.get(index).expect(GENERIC_ERROR)
-        } else if index < planes_len + spheres_len {
-            self.spheres.get(index - planes_len).expect(GENERIC_ERROR)
-        } else {
-            panic!("index out of range of scene");
-        }
-    }
-
     fn num_objects(&self) -> usize {
-        self.planes.len() + self.spheres.len()
+		self.objects.len()
     }
 
 	/// Intersects the scene with the given ray and takes ownership of it,
@@ -154,8 +146,7 @@ impl Scene {
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
         let mut min_object = None;
-        for i in 0..self.num_objects() {
-            let object = self.get_object_by_index(i);
+        for object in &self.objects {
             if let Some(d) = object.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
@@ -165,7 +156,7 @@ impl Scene {
         }
         match min_object {
             Some(object) => Some(RayIntersection {
-                object,
+                object: object.as_ref(),
 				ray,
                 distance: min_dist,
             }),
@@ -175,14 +166,9 @@ impl Scene {
 
 	pub fn lights(&self) -> Vec<&dyn Object> {
 		let mut lights = Vec::<&dyn Object>::new();
-		for plane in &self.planes {
-			if !plane.material().emittance.is_black() {
-				lights.push(plane);
-			}
-		}
-		for sphere in &self.spheres {
-			if !sphere.material().emittance.is_black() {
-				lights.push(sphere);
+		for object in &self.objects {
+			if !object.material().emittance.is_black() {
+				lights.push(object.as_ref());
 			}
 		}
 		lights

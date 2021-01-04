@@ -8,10 +8,11 @@ edition = "2018"
 debug = true
 
 [dependencies]
-png = "0.16.8"
+bvh = "0.3.2"
 clap = "2.33.3"
 crossbeam-channel = "0.5.0"
 fastrand = "1.4.0"
 nalgebra = "0.23.2"
+png = "0.16.8"
 rayon = "1.5.0"
 sdl2 = "0.34.2"
