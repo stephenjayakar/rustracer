@@ -79,7 +79,7 @@ impl Sphere {
 
 impl Triangle {
 	pub fn new(p1: Point, p2: Point, p3: Point, material: Material) -> Triangle {
-		let normal = (p1 - p2).cross(p1 - p3);
+		let normal = (p1 - p2).cross(p1 - p3).normalized();
 		Triangle {
 			p1, p2, p3,
 			normal,
