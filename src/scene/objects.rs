@@ -1,11 +1,13 @@
 use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
-use bvh::nalgebra::Point3;
 
 use std::f64::consts::PI;
 
 use super::super::common::Spectrum;
 use super::{Point, Ray, Vector};
+
+const PLANE_THICKNESS: f64 = 0.0001;
+const PLANE_WIDTH: f64 = 200.0;
 
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
@@ -173,8 +175,8 @@ impl Bounded for Sphere {
         let max = self.center + half_size;
 
 		// RIP IN PEACE
-		let min = Point3::new(min.x() as f32, min.y() as f32, min.z() as f32);
-		let max = Point3::new(max.x() as f32, max.y() as f32, max.z() as f32);
+		let min = point_to_bvh_point(min);
+		let max = point_to_bvh_point(max);
         AABB::with_bounds(min, max)
     }
 }
@@ -191,6 +193,8 @@ impl BHShape for Sphere {
 
 impl Bounded for Plane {
     fn aabb(&self) -> AABB {
+		let lower_point = self.point - (self.normal * PLANE_THICKNESS);
+		
 		unimplemented!();
     }
 }
@@ -203,4 +207,8 @@ impl BHShape for Plane {
     fn bh_node_index(&self) -> usize {
         self.node_index
     }
+}
+
+fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
+	bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)
 }
