@@ -58,7 +58,7 @@ impl Scene {
 	/// Creates a Cornell box of sorts
     pub fn new_preset() -> Scene {
 		let half_length = 20.0;
-		let box_z_offset = -50.0;
+		let box_z_offset = -48.0;
         let red_diffuse_material = Material::new(
             BSDF::Diffuse,
             Spectrum::red(),
@@ -110,6 +110,10 @@ impl Scene {
 		let p5 = Point::new(half_length, half_length, z);
 		let p6 = Point::new(-half_length, half_length, box_z_offset);
 		let p7 = Point::new(half_length, half_length, box_z_offset);
+		let p8 = Point::new(-half_length, half_length, box_z_offset);
+		let p9 = Point::new(-half_length, half_length, z);
+		let p10 = Point::new(half_length, half_length, z);
+		let p11 = Point::new(half_length, half_length, box_z_offset);
 
         let triangles = vec![
 			// bottom wall
@@ -152,26 +156,30 @@ impl Scene {
 				green_diffuse_material,
 			),
 			// left wall was red
-
-
-			// // right wall
-			// Triangle::new(
-			// 	Point::new(half_length, 0.0, 0.0),
-			// 	Vector::new(-1.0, 0.0, 0.0),
-			// 	blue_diffuse_material,
-			// ),
-			// // back wall is only half length depth
-			// Triangle::new(
-			// 	Point::new(0.0, 0.0, box_z_offset - half_length),
-			// 	Vector::new(0.0, 0.0, 1.0),
-			// 	green_diffuse_material,
-			// ),
-			// // top wall
-			// Triangle::new(
-			// 	Point::new(0.0, half_length, 0.0),
-			// 	Vector::new(0.0, -1.0, 0.0),
-			// 	grey_diffuse_material,
-			// ),
+			Triangle::new(
+				p8,
+				p0,
+				p9,
+				red_diffuse_material,
+			),
+			Triangle::new(
+				p9,
+				p8,
+				p1,
+				red_diffuse_material,
+			),
+			Triangle::new(
+				p3,
+				p11,
+				p2,
+				blue_diffuse_material,
+			),
+			Triangle::new(
+				p10,
+				p2,
+				p11,
+				blue_diffuse_material,
+			),
 		];
         Scene::new(triangles, spheres)
     }
