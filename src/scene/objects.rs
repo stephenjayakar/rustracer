@@ -3,11 +3,8 @@ use bvh::bounding_hierarchy::BHShape;
 
 use std::f64::consts::PI;
 
-use super::super::common::Spectrum;
+use super::super::common::{EPS, Spectrum};
 use super::{Point, Ray, Vector};
-
-const PLANE_THICKNESS: f64 = 0.0001;
-const PLANE_WIDTH: f64 = 200.0;
 
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
@@ -44,9 +41,11 @@ pub struct Sphere {
 	node_index: usize,
 }
 
-pub struct Plane {
-    point: Point,
-    normal: Vector,
+pub struct Triangle {
+	p1: Point,
+	p2: Point,
+	p3: Point,
+	normal: Vector,
     material: Material,
 	node_index: usize,
 }
@@ -76,6 +75,18 @@ impl Sphere {
 			node_index: 0,
         }
     }
+}
+
+impl Triangle {
+	pub fn new(p1: Point, p2: Point, p3: Point, material: Material) -> Triangle {
+		let normal = (p1 - p2).cross(p1 - p3);
+		Triangle {
+			p1, p2, p3,
+			normal,
+			material,
+			node_index: 0,
+		}
+	}
 }
 
 impl Object for Sphere {
@@ -130,41 +141,52 @@ impl Object for Sphere {
 	}
 }
 
-impl Plane {
-    pub fn new(point: Point, normal: Vector, material: Material) -> Plane {
-        Plane {
-            point,
-            normal,
-            material,
-			node_index: 0,
-        }
-    }
-}
-
-impl Object for Plane {
+impl Object for Triangle {
+	/// Scractapixel's Triangle intersection algorithm
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-        let d = (self.point - ray.origin).dot(self.normal) / ray.direction.dot(self.normal);
-        if d > 0.0 {
-            Some(d)
-        } else {
-            None
-        }
-    }
+		let n = self.normal;
+		let n_dot_dir = n.dot(ray.direction);
+		let v0 = self.p1 - Point::origin();
+
+		if f64::abs(n_dot_dir) < EPS { return None }
+
+		let d = n.dot(v0);
+		let t = (n.dot(ray.origin - Point::origin()) + d) / (n_dot_dir);
+		if t < 0.0 { return None };
+
+		let p = ray.origin + ray.direction * t;
+
+		let e0 = self.p2 - self.p1;
+		let vp0 = p - self.p1;
+		let c = e0.cross(vp0);
+		if n.dot(c) < 0.0 { return None };
+
+		let e1 = self.p3 - self.p2;
+		let vp1 = p - self.p2;
+		let c = e1.cross(vp1);
+		if n.dot(c) < 0.0 { return None };
+
+		let e2 = self.p3 - self.p1;
+		let vp2 = p - self.p3;
+		let c = e2.cross(vp2);
+		if n.dot(c) < 0.0 { return None };
+
+		Some(t)
+	}
 
     fn surface_normal(&self, _: Point) -> Vector {
-        self.normal
-    }
-
+		self.normal
+	}
     fn material(&self) -> &Material {
-        &self.material
-    }
+		&self.material
+	}
 
 	fn random_point(&self) -> Point {
-		unimplemented!()
+		unimplemented!();
 	}
 
 	fn sample_l(&self, intersection_point: Point) -> LightSample {
-		unimplemented!()
+		unimplemented!();
 	}
 }
 
@@ -182,24 +204,6 @@ impl Bounded for Sphere {
 }
 
 impl BHShape for Sphere {
-    fn set_bh_node_index(&mut self, index: usize) {
-        self.node_index = index;
-    }
-
-    fn bh_node_index(&self) -> usize {
-        self.node_index
-    }
-}
-
-impl Bounded for Plane {
-    fn aabb(&self) -> AABB {
-		let lower_point = self.point - (self.normal * PLANE_THICKNESS);
-		
-		unimplemented!();
-    }
-}
-
-impl BHShape for Plane {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }

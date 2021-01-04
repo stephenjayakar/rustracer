@@ -6,12 +6,12 @@ mod geo;
 mod objects;
 
 pub use geo::{Point, Ray, Vector};
-use objects::{Material, Object, Plane, Sphere, BSDF};
+use objects::{Material, Object, Triangle, Sphere, BSDF};
 
 use crate::common::{Spectrum, GENERIC_ERROR, EPS};
 
 pub struct Scene {
-    planes: Vec<Plane>,
+    triangles: Vec<Triangle>,
     spheres: Vec<Sphere>,
 	sphere_bvh: BVH,
 	// TODO: Figure out how to cache this in a thread safe way
@@ -49,10 +49,10 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    fn new(planes: Vec<Plane>, mut spheres: Vec<Sphere>) -> Scene {
+    fn new(triangles: Vec<Triangle>, mut spheres: Vec<Sphere>) -> Scene {
 		let sphere_bvh = BVH::build(&mut spheres);
-		// build plane bvh
-		Scene { planes, spheres, sphere_bvh }
+		// TODO: build triangle bvh
+		Scene { triangles, spheres, sphere_bvh }
     }
 
 	/// Creates a Cornell box of sorts
@@ -97,61 +97,93 @@ impl Scene {
 								   box_z_offset - half_length / 3.0),
 						sphere_radius,
 						red_diffuse_material),
-			// insert the light at the top of the scene, halfway through the plane
+			// insert the light at the top of the scene, halfway through the triangle
             Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
         ];
 
-        let planes = vec![
-			// bottom wall
-			Plane::new(
-				Point::new(0.0, -half_length, 0.0),
-				Vector::new(0.0, 1.0, 0.0),
-				grey_diffuse_material,
-			),
-			// left wall
-			Plane::new(
-				Point::new(-half_length, 0.0, 0.0),
-				Vector::new(1.0, 0.0, 0.0),
-				red_diffuse_material,
-			),
-			// right wall
-			Plane::new(
-				Point::new(half_length, 0.0, 0.0),
-				Vector::new(-1.0, 0.0, 0.0),
-				blue_diffuse_material,
-			),
-			// back wall is only half length depth
-			Plane::new(
-				Point::new(0.0, 0.0, box_z_offset - half_length),
-				Vector::new(0.0, 0.0, 1.0),
+		let p0 = Point::new(-half_length, -half_length, 0.0);
+		let p1 = Point::new(-half_length, -half_length, -half_length);
+		let p2 = Point::new(half_length, -half_length, -half_length);
+		let p3 = Point::new(half_length, -half_length, 0.0);
+		let p4 = Point::new(-half_length, half_length, -half_length);
+		let p5 = Point::new(half_length, half_length, -half_length);
+
+        let triangles = vec![
+			// TODO: remove this first one
+			Triangle::new(
+				Point::new(0.0, 0.0, -8.0),
+				Point::new(1.0, 0.0, -8.0),
+				Point::new(0.0, 1.0, -8.0),
 				green_diffuse_material,
 			),
-			// top wall
-			Plane::new(
-				Point::new(0.0, half_length, 0.0),
-				Vector::new(0.0, -1.0, 0.0),
-				grey_diffuse_material,
-			),
+			// bottom wall
+			// Triangle::new(
+			// 	p0,
+			// 	p1,
+			// 	p2,
+			// 	grey_diffuse_material,
+			// ),
+			// Triangle::new(
+			// 	p0,
+			// 	p2,
+			// 	p3,
+			// 	grey_diffuse_material,
+			// ),
+			// // back wall
+			// Triangle::new(
+			// 	p1,
+			// 	p2,
+			// 	p4,
+			// 	green_diffuse_material,
+			// ),
+			// Triangle::new(
+			// 	p2,
+			// 	p4,
+			// 	p5,
+			// 	green_diffuse_material,
+			// ),
+			// left wall was red
+
+
+
+			// // right wall
+			// Triangle::new(
+			// 	Point::new(half_length, 0.0, 0.0),
+			// 	Vector::new(-1.0, 0.0, 0.0),
+			// 	blue_diffuse_material,
+			// ),
+			// // back wall is only half length depth
+			// Triangle::new(
+			// 	Point::new(0.0, 0.0, box_z_offset - half_length),
+			// 	Vector::new(0.0, 0.0, 1.0),
+			// 	green_diffuse_material,
+			// ),
+			// // top wall
+			// Triangle::new(
+			// 	Point::new(0.0, half_length, 0.0),
+			// 	Vector::new(0.0, -1.0, 0.0),
+			// 	grey_diffuse_material,
+			// ),
 		];
-        Scene::new(planes, spheres)
+        Scene::new(triangles, spheres)
     }
 
     // allows indexing across multiple object data structures
     fn get_object_by_index(&self, index: usize) -> &dyn Object {
-        let planes_len = self.planes.len();
+        let triangles_len = self.triangles.len();
         let spheres_len = self.spheres.len();
 
-        if index < planes_len {
-            self.planes.get(index).expect(GENERIC_ERROR)
-        } else if index < planes_len + spheres_len {
-            self.spheres.get(index - planes_len).expect(GENERIC_ERROR)
+        if index < triangles_len {
+            self.triangles.get(index).expect(GENERIC_ERROR)
+        } else if index < triangles_len + spheres_len {
+            self.spheres.get(index - triangles_len).expect(GENERIC_ERROR)
         } else {
             panic!("index out of range of scene");
         }
     }
 
     fn num_objects(&self) -> usize {
-        self.planes.len() + self.spheres.len()
+        self.triangles.len() + self.spheres.len()
     }
 
 	/// Intersects the scene with the given ray and takes ownership of it,
@@ -170,11 +202,11 @@ impl Scene {
                 }
             }
 		}
-		for plane in &self.planes {
-            if let Some(d) = plane.intersect(&ray) {
+		for triangle in &self.triangles {
+            if let Some(d) = triangle.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
-                    min_object = Some(plane);
+                    min_object = Some(triangle);
                 }
             }
         }
@@ -190,9 +222,9 @@ impl Scene {
 
 	pub fn lights(&self) -> Vec<&dyn Object> {
 		let mut lights = Vec::<&dyn Object>::new();
-		for plane in &self.planes {
-			if !plane.material().emittance.is_black() {
-				lights.push(plane);
+		for triangle in &self.triangles {
+			if !triangle.material().emittance.is_black() {
+				lights.push(triangle);
 			}
 		}
 		for sphere in &self.spheres {
