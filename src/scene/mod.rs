@@ -114,28 +114,28 @@ impl Scene {
         let triangles = vec![
 			// bottom wall
 			Triangle::new(
-				p0,
 				p1,
+				p0,
 				p2,
 				grey_diffuse_material,
 			),
 			Triangle::new(
-				p0,
-				p2,
 				p3,
+				p2,
+				p0,
 				grey_diffuse_material,
 			),
 			// top wall
 			Triangle::new(
 				p4,
+				p5,
 				p6,
-				p7,
 				grey_diffuse_material,
 			),
 			Triangle::new(
 				p7,
+				p6,
 				p5,
-				p4,
 				grey_diffuse_material,
 			),
 			// back wall
