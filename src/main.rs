@@ -13,8 +13,8 @@ mod scene;
 use raytracer::Raytracer;
 use scene::Point;
 
-const DEFAULT_SCREEN_WIDTH: u32 = 1200;
-const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
+const DEFAULT_SCREEN_WIDTH: u32 = 600;
+const DEFAULT_SCREEN_HEIGHT: u32 = 600;
 const DEFAULT_FOV_DEGREES: f64 = 90.0;
 const DEFAULT_GI_SAMPLES: u32 = 4;
 const DEFAULT_LIGHT_SAMPLES: u32 = 4;
