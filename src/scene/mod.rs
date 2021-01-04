@@ -1,5 +1,7 @@
 extern crate sdl2;
 
+use bvh::bvh::BVH;
+
 mod geo;
 mod objects;
 
@@ -11,6 +13,7 @@ use crate::common::{Spectrum, GENERIC_ERROR, EPS};
 pub struct Scene {
     planes: Vec<Plane>,
     spheres: Vec<Sphere>,
+	sphere_bvh: BVH,
 	// TODO: Figure out how to cache this in a thread safe way
 	// lights: Vec<&'a dyn Object>,
 }
@@ -46,8 +49,10 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    fn new(planes: Vec<Plane>, spheres: Vec<Sphere>) -> Scene {
-		Scene { planes, spheres }
+    fn new(planes: Vec<Plane>, mut spheres: Vec<Sphere>) -> Scene {
+		let sphere_bvh = BVH::build(&mut spheres);
+		// build plane bvh
+		Scene { planes, spheres, sphere_bvh }
     }
 
 	/// Creates a Cornell box of sorts
@@ -153,13 +158,23 @@ impl Scene {
 	/// in order to populate it in the intersection object without copying.
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
-        let mut min_object = None;
-        for i in 0..self.num_objects() {
-            let object = self.get_object_by_index(i);
-            if let Some(d) = object.intersect(&ray) {
+        let mut min_object: Option<&dyn Object> = None;
+		// test sphere intersections
+		// yikes two
+		let hit_sphere_aabbs = self.sphere_bvh.traverse(&ray_to_bvh_ray(&ray), &self.spheres);
+		for sphere in hit_sphere_aabbs {
+            if let Some(d) = sphere.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
-                    min_object = Some(object);
+                    min_object = Some(sphere);
+                }
+            }
+		}
+		for plane in &self.planes {
+            if let Some(d) = plane.intersect(&ray) {
+                if d < min_dist {
+                    min_dist = d;
+                    min_object = Some(plane);
                 }
             }
         }
@@ -184,7 +199,14 @@ impl Scene {
 			if !sphere.material().emittance.is_black() {
 				lights.push(sphere);
 			}
+
 		}
 		lights
 	}
+}
+
+pub fn ray_to_bvh_ray(ray: &Ray) -> bvh::ray::Ray {
+	let origin = bvh::nalgebra::Point3::new(ray.origin.x() as f32, ray.origin.y() as f32, ray.origin.z() as f32);
+	let direction = bvh::nalgebra::Vector3::new(ray.direction.x() as f32, ray.direction.y() as f32, ray.direction.z() as f32);
+	bvh::ray::Ray::new(origin, direction)
 }

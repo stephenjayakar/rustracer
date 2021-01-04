@@ -165,6 +165,14 @@ impl Add<Vector> for Point {
     }
 }
 
+impl Sub<Vector> for Point {
+    type Output = Point;
+
+    fn sub(self, other: Vector) -> Self::Output {
+        Point::new_from_na(self.p - other.v)
+    }
+}
+
 impl Add for Vector {
     type Output = Vector;
 

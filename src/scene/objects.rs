@@ -1,3 +1,7 @@
+use bvh::aabb::{AABB, Bounded};
+use bvh::bounding_hierarchy::BHShape;
+use bvh::nalgebra::Point3;
+
 use std::f64::consts::PI;
 
 use super::super::common::Spectrum;
@@ -35,12 +39,14 @@ pub struct Sphere {
     center: Point,
     radius: f64,
     material: Material,
+	node_index: usize,
 }
 
 pub struct Plane {
     point: Point,
     normal: Vector,
     material: Material,
+	node_index: usize,
 }
 
 impl Material {
@@ -65,6 +71,7 @@ impl Sphere {
             center,
             radius,
             material,
+			node_index: 0,
         }
     }
 }
@@ -127,6 +134,7 @@ impl Plane {
             point,
             normal,
             material,
+			node_index: 0,
         }
     }
 }
@@ -156,4 +164,43 @@ impl Object for Plane {
 	fn sample_l(&self, intersection_point: Point) -> LightSample {
 		unimplemented!()
 	}
+}
+
+impl Bounded for Sphere {
+    fn aabb(&self) -> AABB {
+        let half_size = Vector::new(self.radius, self.radius, self.radius);
+        let min = self.center - half_size;
+        let max = self.center + half_size;
+
+		// RIP IN PEACE
+		let min = Point3::new(min.x() as f32, min.y() as f32, min.z() as f32);
+		let max = Point3::new(max.x() as f32, max.y() as f32, max.z() as f32);
+        AABB::with_bounds(min, max)
+    }
+}
+
+impl BHShape for Sphere {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}
+
+impl Bounded for Plane {
+    fn aabb(&self) -> AABB {
+		unimplemented!();
+    }
+}
+
+impl BHShape for Plane {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
 }
