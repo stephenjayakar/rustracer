@@ -166,7 +166,7 @@ impl Object for Triangle {
 		let c = e1.cross(vp1);
 		if n.dot(c) < 0.0 { return None };
 
-		let e2 = self.p3 - self.p1;
+		let e2 = self.p1 - self.p3;
 		let vp2 = p - self.p3;
 		let c = e2.cross(vp2);
 		if n.dot(c) < 0.0 { return None };

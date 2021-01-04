@@ -101,47 +101,56 @@ impl Scene {
             Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
         ];
 
-		let p0 = Point::new(-half_length, -half_length, 0.0);
-		let p1 = Point::new(-half_length, -half_length, -half_length);
-		let p2 = Point::new(half_length, -half_length, -half_length);
-		let p3 = Point::new(half_length, -half_length, 0.0);
-		let p4 = Point::new(-half_length, half_length, -half_length);
-		let p5 = Point::new(half_length, half_length, -half_length);
+		let z = box_z_offset - half_length;
+		let p0 = Point::new(-half_length, -half_length, box_z_offset);
+		let p1 = Point::new(-half_length, -half_length, z);
+		let p2 = Point::new(half_length, -half_length, z);
+		let p3 = Point::new(half_length, -half_length, box_z_offset);
+		let p4 = Point::new(-half_length, half_length,  z);
+		let p5 = Point::new(half_length, half_length, z);
+		let p6 = Point::new(-half_length, half_length, box_z_offset);
+		let p7 = Point::new(half_length, half_length, box_z_offset);
 
         let triangles = vec![
-			// TODO: remove this first one
+			// bottom wall
 			Triangle::new(
-				Point::new(0.0, 0.0, -8.0),
-				Point::new(1.0, 0.0, -8.0),
-				Point::new(0.0, 1.0, -8.0),
+				p0,
+				p1,
+				p2,
+				grey_diffuse_material,
+			),
+			Triangle::new(
+				p0,
+				p2,
+				p3,
+				grey_diffuse_material,
+			),
+			// top wall
+			Triangle::new(
+				p4,
+				p6,
+				p7,
+				grey_diffuse_material,
+			),
+			Triangle::new(
+				p4,
+				p5,
+				p7,
+				grey_diffuse_material,
+			),
+			// // back wall
+			Triangle::new(
+				p1,
+				p4,
+				p2,
 				green_diffuse_material,
 			),
-			// bottom wall
-			// Triangle::new(
-			// 	p0,
-			// 	p1,
-			// 	p2,
-			// 	grey_diffuse_material,
-			// ),
-			// Triangle::new(
-			// 	p0,
-			// 	p2,
-			// 	p3,
-			// 	grey_diffuse_material,
-			// ),
-			// // back wall
-			// Triangle::new(
-			// 	p1,
-			// 	p2,
-			// 	p4,
-			// 	green_diffuse_material,
-			// ),
-			// Triangle::new(
-			// 	p2,
-			// 	p4,
-			// 	p5,
-			// 	green_diffuse_material,
-			// ),
+			Triangle::new(
+				p2,
+				p4,
+				p5,
+				green_diffuse_material,
+			),
 			// left wall was red
 
 
