@@ -138,7 +138,7 @@ impl Scene {
 				p4,
 				grey_diffuse_material,
 			),
-			// // back wall
+			// back wall
 			Triangle::new(
 				p4,
 				p1,
@@ -152,7 +152,6 @@ impl Scene {
 				green_diffuse_material,
 			),
 			// left wall was red
-
 
 
 			// // right wall

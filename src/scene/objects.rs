@@ -79,7 +79,7 @@ impl Sphere {
 
 impl Triangle {
 	pub fn new(p1: Point, p2: Point, p3: Point, material: Material) -> Triangle {
-		let normal = (p1 - p2).cross(p1 - p3).normalized();
+		let normal = ((p2 - p1).cross(p3 - p1)).normalized();
 		Triangle {
 			p1, p2, p3,
 			normal,
@@ -142,36 +142,60 @@ impl Object for Sphere {
 }
 
 impl Object for Triangle {
-	/// Scractapixel's Triangle intersection algorithm
+	/// Moller-Trumbore from Wikipedia
     fn intersect(&self, ray: &Ray) -> Option<f64> {
-		let n = self.normal;
-		let n_dot_dir = n.dot(ray.direction);
-		let v0 = self.p1 - Point::origin();
+		let e1 = self.p2 - self.p1;
+		let e2 = self.p3 - self.p1;
+		let h = ray.direction.cross(e2);
+		let a = e1.dot(h);
+		if f64::abs(a) < EPS {
+			return None;
+		}
+		let f = 1.0 / a;
+		let s = ray.origin - self.p1;
+		let u = f * s.dot(h);
+		if u < 0.0 || u > 1.0 {
+			return None
+		}
+		let q = s.cross(e1);
+		let v = f * ray.direction.dot(q);
+		if v < 0.0 || u > 1.0 {
+			return None
+		}
+		let t = f * e2.dot(q);
+		if t > EPS {
+			Some(t)
+		} else {
+			None
+		}
+		// let n = self.normal;
+		// let n_dot_dir = n.dot(ray.direction);
+		// let v0 = self.p1 - Point::origin();
 
-		if f64::abs(n_dot_dir) < EPS { return None }
+		// if f64::abs(n_dot_dir) < EPS { return None }
 
-		let d = n.dot(v0);
-		let t = (n.dot(ray.origin - Point::origin()) + d) / (n_dot_dir);
-		if t < 0.0 { return None };
+		// let d = n.dot(v0);
+		// let t = (n.dot(ray.origin - Point::origin()) + d) / (n_dot_dir);
+		// if t < 0.0 { return None };
 
-		let p = ray.origin + ray.direction * t;
+		// let p = ray.origin + ray.direction * t;
 
-		let e0 = self.p2 - self.p1;
-		let vp0 = p - self.p1;
-		let c = e0.cross(vp0);
-		if n.dot(c) < 0.0 { return None };
+		// let e0 = self.p2 - self.p1;
+		// let vp0 = p - self.p1;
+		// let c = e0.cross(vp0);
+		// if n.dot(c) < 0.0 { return None };
 
-		let e1 = self.p3 - self.p2;
-		let vp1 = p - self.p2;
-		let c = e1.cross(vp1);
-		if n.dot(c) < 0.0 { return None };
+		// let e1 = self.p3 - self.p2;
+		// let vp1 = p - self.p2;
+		// let c = e1.cross(vp1);
+		// if n.dot(c) < 0.0 { return None };
 
-		let e2 = self.p1 - self.p3;
-		let vp2 = p - self.p3;
-		let c = e2.cross(vp2);
-		if n.dot(c) < 0.0 { return None };
+		// let e2 = self.p1 - self.p3;
+		// let vp2 = p - self.p3;
+		// let c = e2.cross(vp2);
+		// if n.dot(c) < 0.0 { return None };
 
-		Some(t)
+		// Some(t)
 	}
 
     fn surface_normal(&self, _: Point) -> Vector {
