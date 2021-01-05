@@ -230,7 +230,7 @@ impl Scene {
         }
         match min_object {
             Some(object) => Some(RayIntersection {
-                object,
+                object: object.as_ref(),
 				ray,
                 distance: min_dist,
             }),
