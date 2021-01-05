@@ -237,6 +237,41 @@ impl BHShape for Sphere {
     }
 }
 
+impl Bounded for Triangle {
+    fn aabb(&self) -> AABB {
+		let min_x = f64::min(f64::min(
+			self.p1.x(), self.p2.x()), self.p3.x());
+		let min_y = f64::min(f64::min(
+			self.p1.y(), self.p2.y()), self.p3.y());
+		let min_z = f64::min(f64::min(
+			self.p1.z(), self.p2.z()), self.p3.z());
+		let max_x = f64::max(f64::max(
+			self.p1.x(), self.p2.x()), self.p3.x());
+		let max_y = f64::max(f64::max(
+			self.p1.y(), self.p2.y()), self.p3.y());
+		let max_z = f64::max(f64::max(
+			self.p1.z(), self.p2.z()), self.p3.z());
+
+		let min = Point::new(min_x, min_y, min_z);
+		let max = Point::new(max_x, max_y, max_z);
+
+		AABB::with_bounds(
+			point_to_bvh_point(min), point_to_bvh_point(max),
+		)
+    }
+}
+
+impl BHShape for Triangle {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}
+
+
 fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
 	bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)
 }

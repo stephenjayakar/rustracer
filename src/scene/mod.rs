@@ -12,6 +12,7 @@ use crate::common::{Spectrum, GENERIC_ERROR, EPS};
 
 pub struct Scene {
     triangles: Vec<Triangle>,
+	triangle_bvh: BVH,
     spheres: Vec<Sphere>,
 	sphere_bvh: BVH,
 	// TODO: Figure out how to cache this in a thread safe way
@@ -49,10 +50,10 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    fn new(triangles: Vec<Triangle>, mut spheres: Vec<Sphere>) -> Scene {
+    fn new(mut triangles: Vec<Triangle>, mut spheres: Vec<Sphere>) -> Scene {
 		let sphere_bvh = BVH::build(&mut spheres);
-		// TODO: build triangle bvh
-		Scene { triangles, spheres, sphere_bvh }
+		let triangle_bvh = BVH::build(&mut triangles);
+		Scene { triangles, spheres, sphere_bvh, triangle_bvh }
     }
 
 	/// Creates a Cornell box of sorts
@@ -218,7 +219,8 @@ impl Scene {
                 }
             }
 		}
-		for triangle in &self.triangles {
+		let hit_triangle_aabbs = self.triangle_bvh.traverse(&ray_to_bvh_ray(&ray), &self.triangles);
+		for triangle in hit_triangle_aabbs {
             if let Some(d) = triangle.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
