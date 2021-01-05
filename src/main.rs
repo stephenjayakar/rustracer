@@ -68,9 +68,9 @@ impl Config {
 				 .short("i"))
 			.get_matches();
 
-		let light_samples = matches.value_of("g")
+		let light_samples = matches.value_of("l")
 			.map_or(DEFAULT_GI_SAMPLES, |arg| arg.parse().unwrap());
-		let gi_samples = matches.value_of("l")
+		let gi_samples = matches.value_of("g")
 			.map_or(DEFAULT_LIGHT_SAMPLES, |arg| arg.parse().unwrap());
 		let bounces = matches.value_of("b")
 			.map_or(DEFAULT_BOUNCES, |arg| arg.parse().unwrap());
