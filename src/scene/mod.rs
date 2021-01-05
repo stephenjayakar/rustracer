@@ -8,7 +8,7 @@ mod objects;
 pub use geo::{Point, Ray, Vector};
 use objects::{Material, Object, Triangle, Sphere, BSDF};
 
-use crate::common::{Spectrum, EPS};
+use crate::common::{EPS, Spectrum};
 
 pub struct Scene {
 	objects: Vec<Object>,
@@ -105,18 +105,18 @@ impl Scene {
         ];
 
 		let z = box_z_offset - half_length;
-		let p0 = Point::new(-half_length, -half_length, box_z_offset);
+		let p0 = Point::new(-half_length, -half_length, 0.0);
 		let p1 = Point::new(-half_length, -half_length, z);
 		let p2 = Point::new(half_length, -half_length, z);
-		let p3 = Point::new(half_length, -half_length, box_z_offset);
+		let p3 = Point::new(half_length, -half_length, 0.0);
 		let p4 = Point::new(-half_length, half_length,  z);
 		let p5 = Point::new(half_length, half_length, z);
-		let p6 = Point::new(-half_length, half_length, box_z_offset);
-		let p7 = Point::new(half_length, half_length, box_z_offset);
-		let p8 = Point::new(-half_length, half_length, box_z_offset);
+		let p6 = Point::new(-half_length, half_length, 0.0);
+		let p7 = Point::new(half_length, half_length, 0.0);
+		let p8 = Point::new(-half_length, half_length, 0.0);
 		let p9 = Point::new(-half_length, half_length, z);
 		let p10 = Point::new(half_length, half_length, z);
-		let p11 = Point::new(half_length, half_length, box_z_offset);
+		let p11 = Point::new(half_length, half_length, 0.0);
 
         let triangles = vec![
 			// bottom wall
