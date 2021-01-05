@@ -17,7 +17,7 @@ const DEFAULT_SCREEN_WIDTH: u32 = 1200;
 const DEFAULT_SCREEN_HEIGHT: u32 = 1200;
 const DEFAULT_FOV_DEGREES: f64 = 90.0;
 const DEFAULT_GI_SAMPLES: u32 = 4;
-const DEFAULT_LIGHT_SAMPLES: u32 = 64;
+const DEFAULT_LIGHT_SAMPLES: u32 = 4;
 const DEFAULT_BOUNCES: u32 = 3;
 
 pub struct Config {
@@ -69,9 +69,9 @@ impl Config {
 			.get_matches();
 
 		let light_samples = matches.value_of("l")
-			.map_or(DEFAULT_GI_SAMPLES, |arg| arg.parse().unwrap());
-		let gi_samples = matches.value_of("g")
 			.map_or(DEFAULT_LIGHT_SAMPLES, |arg| arg.parse().unwrap());
+		let gi_samples = matches.value_of("g")
+			.map_or(DEFAULT_GI_SAMPLES, |arg| arg.parse().unwrap());
 		let bounces = matches.value_of("b")
 			.map_or(DEFAULT_BOUNCES, |arg| arg.parse().unwrap());
 		let screen_width = matches.value_of("w")
