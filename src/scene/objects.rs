@@ -81,37 +81,82 @@ impl Object {
 	}
 
     pub fn surface_normal(&self, point: Point) -> Vector {
-		unimplemented!()
+		match self {
+			Object::Triangle(triangle) => {
+				triangle.normal
+			},
+			Object::Sphere(sphere) => {
+				(point - sphere.center).normalized()
+			}
+		}
 	}
 
     pub fn material(&self) -> &Material {
-		unimplemented!()
+		match self {
+			Object::Triangle(triangle) => {
+				&triangle.material
+			},
+			Object::Sphere(sphere) => {
+				&sphere.material
+			}
+		}
 	}
 
-	/// Returns a random point on the object.  Used for importance sampling.
-	pub fn random_point(&self) -> Point {
-		unimplemented!()
-	}
-
-	/// TODO: This should probably also return a vector... replace random point
 	pub fn sample_l(&self, intersection_point: Point) -> LightSample {
-		unimplemented!()
+		match self {
+			Object::Triangle(_) => { unimplemented!() },
+			Object::Sphere(sphere) => {
+				let p = intersection_point;
+				let s = sphere.random_point();
+				let ps = s - p;
+				let wi = ps.normalized();
+				let d_c = (sphere.center - p).norm();
+				let d_s = ps.norm();
+				let cos_a = (d_c.powi(2) + sphere.radius.powi(2) - d_s.powi(2)) / (2.0 * d_c * sphere.radius);
+				let pdf = 2.0 * PI * (1.0 - cos_a);
+				LightSample {
+					pdf,
+					wi,
+				}
+			}
+		}
 	}
 }
 
 impl Bounded for Object {
 	fn aabb(&self) -> AABB {
-		unimplemented!()
+		match self {
+			Object::Triangle(triangle) => {
+				triangle.aabb()
+			},
+			Object::Sphere(sphere) => {
+				sphere.aabb()
+			}
+		}
 	}
 }
 
 impl BHShape for Object {
     fn set_bh_node_index(&mut self, index: usize) {
-		unimplemented!()
+		match self {
+			Object::Triangle(triangle) => {
+				triangle.node_index = index;
+			},
+			Object::Sphere(sphere) => {
+				sphere.node_index = index
+			}
+		}
     }
 
     fn bh_node_index(&self) -> usize {
-		unimplemented!()
+		match self {
+			Object::Triangle(triangle) => {
+				triangle.node_index
+			},
+			Object::Sphere(sphere) => {
+				sphere.node_index
+			}
+		}
     }
 }
 
@@ -156,6 +201,12 @@ impl Sphere {
 			node_index: 0,
         }
     }
+
+	fn random_point(&self) -> Point {
+		let random_vector = Vector::random_sphere();
+		let point = self.center.clone();
+		point + (random_vector * self.radius)
+	}
 }
 
 impl Triangle {
@@ -284,16 +335,6 @@ impl Bounded for Sphere {
     }
 }
 
-impl BHShape for Sphere {
-    fn set_bh_node_index(&mut self, index: usize) {
-        self.node_index = index;
-    }
-
-    fn bh_node_index(&self) -> usize {
-        self.node_index
-    }
-}
-
 impl Bounded for Triangle {
     fn aabb(&self) -> AABB {
 		let min_x = f64::min(f64::min(
@@ -317,17 +358,6 @@ impl Bounded for Triangle {
 		)
     }
 }
-
-impl BHShape for Triangle {
-    fn set_bh_node_index(&mut self, index: usize) {
-        self.node_index = index;
-    }
-
-    fn bh_node_index(&self) -> usize {
-        self.node_index
-    }
-}
-
 
 fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
 	bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)

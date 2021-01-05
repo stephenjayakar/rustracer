@@ -46,7 +46,7 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    fn new(mut triangles: Vec<Triangle>, mut spheres: Vec<Sphere>) -> Scene {
+    fn new(triangles: Vec<Triangle>, spheres: Vec<Sphere>) -> Scene {
 		let mut objects = Vec::new();
 		for triangle in triangles {
 			objects.push(Object::Triangle(triangle));
