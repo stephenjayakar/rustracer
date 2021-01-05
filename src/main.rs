@@ -31,6 +31,7 @@ pub struct Config {
 	debug: bool,
 	high_dpi: bool,
 	image_mode: bool,
+	single_threaded: bool,
 }
 
 impl Config {
@@ -66,6 +67,9 @@ impl Config {
 				 .long("image-mode")
 				 .help("Mode that doesn't display anything to screen, but rather just dumps it to a png")
 				 .short("i"))
+			.arg(Arg::with_name("single_threaded")
+				 .long("single-threaded")
+				 .help("Mode that runs without parallelization"))
 			.get_matches();
 
 		let light_samples = matches.value_of("l")
@@ -81,6 +85,7 @@ impl Config {
 		let debug = matches.is_present("debug");
 		let high_dpi = matches.is_present("high_dpi");
 		let image_mode = matches.is_present("image_mode");
+		let single_threaded = matches.is_present("single_threaded");
 
 		Config {
 			screen_width,
@@ -92,7 +97,8 @@ impl Config {
 			bounces,
 			debug,
 			high_dpi,
-			image_mode
+			image_mode,
+			single_threaded,
 		}
 	}
 }
