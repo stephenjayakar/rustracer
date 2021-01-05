@@ -10,9 +10,11 @@ use objects::{Material, Object, Triangle, Sphere, BSDF};
 
 use crate::common::{EPS, Spectrum};
 
+/// The Scene is static. Please don't change it unless you update the acceleration structures!
 pub struct Scene {
 	objects: Vec<Object>,
 	bvh: BVH,
+	light_indexes: Vec<usize>,
 }
 
 pub struct RayIntersection<'a> {
@@ -54,8 +56,18 @@ impl Scene {
 		for sphere in spheres {
 			objects.push(Object::Sphere(sphere));
 		}
+
+		let mut light_indexes = Vec::new();
+		for i in 0..objects.len() {
+			let object = objects.get(i).unwrap();
+			if !object.material().emittance.is_black() {
+				light_indexes.push(i);
+			}
+		}
+
 		let bvh = BVH::build(&mut objects);
-		Scene { objects, bvh }
+
+		Scene { objects, bvh, light_indexes }
     }
 
 	/// Creates a Cornell box of sorts
@@ -212,13 +224,9 @@ impl Scene {
     }
 
 	pub fn lights(&self) -> Vec<&Object> {
-		let mut lights = Vec::<&Object>::new();
-		for object in &self.objects {
-			if !object.material().emittance.is_black() {
-				lights.push(object);
-			}
-		}
-		lights
+		self.light_indexes.iter().map(|i| {
+			self.objects.get(*i).unwrap()
+		}).collect()
 	}
 }
 
