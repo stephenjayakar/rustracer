@@ -7,6 +7,7 @@ use rayon::prelude::*;
 use std::f64::consts::PI;
 use std::time::Instant;
 
+const RUSSIAN_ROULETTE_PROBABILITY: f32 = 0.7;
 
 pub struct Raytracer {
     config: Config,
@@ -47,7 +48,11 @@ impl Raytracer {
 	fn render_helper(&self, i: u32, j: u32) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(self.config.origin, vector);
-        let color = self.cast_ray(ray, self.config.bounces);
+		let mut color = Spectrum::black();
+		for _ in 0..self.config.samples_per_pixel {
+			color += self.cast_ray(ray, self.config.bounces);
+		}
+		color = color * (1.0 / self.config.samples_per_pixel as f64);
 		color
 	}
 
@@ -83,8 +88,7 @@ impl Raytracer {
         let intersection_point: Point = intersection.point();
 		let normal: Vector = object.surface_normal(intersection_point);
 
-		// TODO: make this configurable i guess...
-        let num_samples = 512;
+        let num_samples = self.config.light_samples;
         let mut l = Spectrum::black();
         for _ in 0..num_samples {
             // direct lighting
@@ -115,6 +119,7 @@ impl Raytracer {
 		let num_light_samples = self.config.light_samples;
 
 		for light in self.scene.lights() {
+			let mut color = Spectrum::black();
 			for _ in 0..num_light_samples {
 				let wo = ray.direction;
 				let sample = light.sample_l(intersection_point);
@@ -125,12 +130,11 @@ impl Raytracer {
 				if !other_emittance.is_black() {
 					let reflected = object.material().bsdf(wi, wo);
 					let cos_theta = f64::abs(wi.dot(normal));
-					let color =
+					color +=
 						other_emittance * reflected * cos_theta * pdf;
-					l += color;
 				}
 			}
-			l = l * (1.0 / num_light_samples as f64);
+			l += color * (1.0 / num_light_samples as f64);
 		}
 		l += self.zero_bounce_radiance(intersection);
 		l
@@ -138,33 +142,31 @@ impl Raytracer {
 
 	/// Global illumination
 	fn global_illumination(&self, intersection: &RayIntersection, bounces_left: u32) -> Spectrum {
-		let num_samples = self.config.gi_samples;
 		let object = intersection.object();
 		let intersection_point = intersection.point();
 		let normal = object.surface_normal(intersection_point);
 		let ray = intersection.ray();
 
-		let mut accumulated_color = Spectrum::black();
-		for _ in 0..num_samples {
-			let wi = Vector::random_hemisphere(normal);
-			let wo = ray.direction;
-			let bounced_ray = Ray::new(intersection_point, wi);
-			let mut color = self.cast_ray(bounced_ray, bounces_left - 1);
-			let pdf = 2.0 * PI;
-
-			if !color.is_black() {
-				let reflected = object.material().bsdf(wi, wo);
-				let cos_theta = f64::abs(wi.dot(normal));
-				color =
-					color * reflected * cos_theta * pdf;
-				accumulated_color += color;
-			}
+		let mut l = self.one_bounce_radiance_importance(intersection);
+		// russian roulette for "infinite bounces"
+		let sample = fastrand::f32();
+		if sample > RUSSIAN_ROULETTE_PROBABILITY {
+			return l
 		}
-		accumulated_color = accumulated_color * (1.0 / num_samples as f64);
 
-		let mut l = self.zero_bounce_radiance(intersection);
-		l = l + self.one_bounce_radiance_importance(intersection);
-		l = l + accumulated_color;
+		let wi = Vector::random_hemisphere(normal);
+		let wo = ray.direction;
+		let bounced_ray = Ray::new(intersection_point, wi);
+		let mut color = self.cast_ray(bounced_ray, bounces_left - 1);
+		let pdf = 2.0 * PI;
+
+		if !color.is_black() {
+			let reflected = object.material().bsdf(wi, wo);
+			let cos_theta = f64::abs(wi.dot(normal));
+			color =
+				color * reflected * cos_theta * pdf;
+		}
+		l = l + color;
 		l
 	}
 

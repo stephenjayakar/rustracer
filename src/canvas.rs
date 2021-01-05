@@ -50,7 +50,7 @@ impl Canvas {
 		let pixels = canvas.read_pixels(None, sdl2::pixels::PixelFormatEnum::RGB24)
 			.expect("Failed to read pixels from canvas");
 		let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-		let path_string = format!("./{}.png", timestamp.as_secs().to_string());
+		let path_string = format!("./dump/{}.png", timestamp.as_secs().to_string());
 		println!("Saving with filename {}", path_string);
 		let path = Path::new(&path_string);
 		let file = File::create(path).unwrap();
