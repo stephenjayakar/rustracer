@@ -23,15 +23,96 @@ pub struct LightSample {
 	pub wi: Vector,
 }
 
-pub trait Object {
+pub enum Object {
+	Triangle(Triangle),
+	Sphere(Sphere),
+}
+
+impl Object {
 	/// Returns distance if intersection occurs.
-    fn intersect(&self, ray: &Ray) -> Option<f64>;
-    fn surface_normal(&self, point: Point) -> Vector;
-    fn material(&self) -> &Material;
+    pub fn intersect(&self, ray: &Ray) -> Option<f64> {
+		match self {
+		    Object::Triangle(triangle) => {
+				let e1 = triangle.p2 - triangle.p1;
+				let e2 = triangle.p3 - triangle.p1;
+				let h = ray.direction.cross(e2);
+				let a = e1.dot(h);
+				if f64::abs(a) < EPS {
+					return None;
+				}
+				let f = 1.0 / a;
+				let s = ray.origin - triangle.p1;
+				let u = f * s.dot(h);
+				if u < 0.0 || u > 1.0 {
+					return None
+				}
+				let q = s.cross(e1);
+				let v = f * ray.direction.dot(q);
+				if v < 0.0 || u > 1.0 {
+					return None
+				}
+				let t = f * e2.dot(q);
+				if t > EPS {
+					Some(t)
+				} else {
+					None
+				}
+			}
+		    Object::Sphere(sphere) => {
+				let l: Vector = sphere.center - ray.origin;
+				let adj = l.dot(ray.direction);
+				let d2 = l.dot(l) - (adj * adj);
+				let radius2 = sphere.radius * sphere.radius;
+				if d2 > radius2 {
+					return None;
+				}
+				let thc = (radius2 - d2).sqrt();
+				let t0 = adj - thc;
+				let t1 = adj + thc;
+
+				if t0 < 0.0 && t1 < 0.0 {
+					return None;
+				}
+
+				let distance = if t0 < t1 { t0 } else { t1 };
+				Some(distance)
+			}
+		}
+	}
+
+    pub fn surface_normal(&self, point: Point) -> Vector {
+		unimplemented!()
+	}
+
+    pub fn material(&self) -> &Material {
+		unimplemented!()
+	}
+
 	/// Returns a random point on the object.  Used for importance sampling.
-	fn random_point(&self) -> Point;
+	pub fn random_point(&self) -> Point {
+		unimplemented!()
+	}
+
 	/// TODO: This should probably also return a vector... replace random point
-	fn sample_l(&self, intersection_point: Point) -> LightSample;
+	pub fn sample_l(&self, intersection_point: Point) -> LightSample {
+		unimplemented!()
+	}
+}
+
+impl Bounded for Object {
+	fn aabb(&self) -> AABB {
+		unimplemented!()
+	}
+}
+
+impl BHShape for Object {
+    fn set_bh_node_index(&mut self, index: usize) {
+		unimplemented!()
+    }
+
+    fn bh_node_index(&self) -> usize {
+		unimplemented!()
+    }
 }
 
 pub struct Sphere {
@@ -89,130 +170,106 @@ impl Triangle {
 	}
 }
 
-impl Object for Sphere {
-	/// Sphere intersection from bheisler.
-    fn intersect(&self, ray: &Ray) -> Option<f64> {
-        let l: Vector = self.center - ray.origin;
-        let adj = l.dot(ray.direction);
-        let d2 = l.dot(l) - (adj * adj);
-        let radius2 = self.radius * self.radius;
-        if d2 > radius2 {
-            return None;
-        }
-        let thc = (radius2 - d2).sqrt();
-        let t0 = adj - thc;
-        let t1 = adj + thc;
+// impl Object for Sphere {
+// 	/// Sphere intersection from bheisler.
+//     fn intersect(&self, ray: &Ray) -> Option<f64> {
+//         let l: Vector = self.center - ray.origin;
+//         let adj = l.dot(ray.direction);
+//         let d2 = l.dot(l) - (adj * adj);
+//         let radius2 = self.radius * self.radius;
+//         if d2 > radius2 {
+//             return None;
+//         }
+//         let thc = (radius2 - d2).sqrt();
+//         let t0 = adj - thc;
+//         let t1 = adj + thc;
 
-        if t0 < 0.0 && t1 < 0.0 {
-            return None;
-        }
+//         if t0 < 0.0 && t1 < 0.0 {
+//             return None;
+//         }
 
-        let distance = if t0 < t1 { t0 } else { t1 };
-        Some(distance)
-    }
+//         let distance = if t0 < t1 { t0 } else { t1 };
+//         Some(distance)
+//     }
 
-    fn surface_normal(&self, point: Point) -> Vector {
-        (point - self.center).normalized()
-    }
+//     fn surface_normal(&self, point: Point) -> Vector {
+//         (point - self.center).normalized()
+//     }
 
-    fn material(&self) -> &Material {
-        &self.material
-    }
+//     fn material(&self) -> &Material {
+//         &self.material
+//     }
 
-	fn random_point(&self) -> Point {
-		let random_vector = Vector::random_sphere();
-		let point = self.center.clone();
-		point + (random_vector * self.radius)
-	}
+// 	fn random_point(&self) -> Point {
+// 		let random_vector = Vector::random_sphere();
+// 		let point = self.center.clone();
+// 		point + (random_vector * self.radius)
+// 	}
 
-	fn sample_l(&self, intersection_point: Point) -> LightSample {
-		let p = intersection_point;
-		let s = self.random_point();
-		let ps = s - p;
-		let wi = ps.normalized();
-		let d_c = (self.center - p).norm();
-		let d_s = ps.norm();
-		let cos_a = (d_c.powi(2) + self.radius.powi(2) - d_s.powi(2)) / (2.0 * d_c * self.radius);
-		let pdf = 2.0 * PI * (1.0 - cos_a);
-		LightSample {
-			pdf,
-			wi,
-		}
-	}
-}
+// 	fn sample_l(&self, intersection_point: Point) -> LightSample {
+// 		let p = intersection_point;
+// 		let s = self.random_point();
+// 		let ps = s - p;
+// 		let wi = ps.normalized();
+// 		let d_c = (self.center - p).norm();
+// 		let d_s = ps.norm();
+// 		let cos_a = (d_c.powi(2) + self.radius.powi(2) - d_s.powi(2)) / (2.0 * d_c * self.radius);
+// 		let pdf = 2.0 * PI * (1.0 - cos_a);
+// 		LightSample {
+// 			pdf,
+// 			wi,
+// 		}
+// 	}
+// }
 
-impl Object for Triangle {
-	/// Moller-Trumbore from Wikipedia
-    fn intersect(&self, ray: &Ray) -> Option<f64> {
-		let e1 = self.p2 - self.p1;
-		let e2 = self.p3 - self.p1;
-		let h = ray.direction.cross(e2);
-		let a = e1.dot(h);
-		if f64::abs(a) < EPS {
-			return None;
-		}
-		let f = 1.0 / a;
-		let s = ray.origin - self.p1;
-		let u = f * s.dot(h);
-		if u < 0.0 || u > 1.0 {
-			return None
-		}
-		let q = s.cross(e1);
-		let v = f * ray.direction.dot(q);
-		if v < 0.0 || u > 1.0 {
-			return None
-		}
-		let t = f * e2.dot(q);
-		if t > EPS {
-			Some(t)
-		} else {
-			None
-		}
-		// let n = self.normal;
-		// let n_dot_dir = n.dot(ray.direction);
-		// let v0 = self.p1 - Point::origin();
+// impl Object for Triangle {
+// 	/// Moller-Trumbore from Wikipedia
+//     fn intersect(&self, ray: &Ray) -> Option<f64> {
+// 		// let n = self.normal;
+// 		// let n_dot_dir = n.dot(ray.direction);
+// 		// let v0 = self.p1 - Point::origin();
 
-		// if f64::abs(n_dot_dir) < EPS { return None }
+// 		// if f64::abs(n_dot_dir) < EPS { return None }
 
-		// let d = n.dot(v0);
-		// let t = (n.dot(ray.origin - Point::origin()) + d) / (n_dot_dir);
-		// if t < 0.0 { return None };
+// 		// let d = n.dot(v0);
+// 		// let t = (n.dot(ray.origin - Point::origin()) + d) / (n_dot_dir);
+// 		// if t < 0.0 { return None };
 
-		// let p = ray.origin + ray.direction * t;
+// 		// let p = ray.origin + ray.direction * t;
 
-		// let e0 = self.p2 - self.p1;
-		// let vp0 = p - self.p1;
-		// let c = e0.cross(vp0);
-		// if n.dot(c) < 0.0 { return None };
+// 		// let e0 = self.p2 - self.p1;
+// 		// let vp0 = p - self.p1;
+// 		// let c = e0.cross(vp0);
+// 		// if n.dot(c) < 0.0 { return None };
 
-		// let e1 = self.p3 - self.p2;
-		// let vp1 = p - self.p2;
-		// let c = e1.cross(vp1);
-		// if n.dot(c) < 0.0 { return None };
+// 		// let e1 = self.p3 - self.p2;
+// 		// let vp1 = p - self.p2;
+// 		// let c = e1.cross(vp1);
+// 		// if n.dot(c) < 0.0 { return None };
 
-		// let e2 = self.p1 - self.p3;
-		// let vp2 = p - self.p3;
-		// let c = e2.cross(vp2);
-		// if n.dot(c) < 0.0 { return None };
+// 		// let e2 = self.p1 - self.p3;
+// 		// let vp2 = p - self.p3;
+// 		// let c = e2.cross(vp2);
+// 		// if n.dot(c) < 0.0 { return None };
 
-		// Some(t)
-	}
+// 		// Some(t)
+// 	}
 
-    fn surface_normal(&self, _: Point) -> Vector {
-		self.normal
-	}
-    fn material(&self) -> &Material {
-		&self.material
-	}
+//     fn surface_normal(&self, _: Point) -> Vector {
+// 		self.normal
+// 	}
+//     fn material(&self) -> &Material {
+// 		&self.material
+// 	}
 
-	fn random_point(&self) -> Point {
-		unimplemented!();
-	}
+// 	fn random_point(&self) -> Point {
+// 		unimplemented!();
+// 	}
 
-	fn sample_l(&self, intersection_point: Point) -> LightSample {
-		unimplemented!();
-	}
-}
+// 	fn sample_l(&self, intersection_point: Point) -> LightSample {
+// 		unimplemented!();
+// 	}
+// }
 
 impl Bounded for Sphere {
     fn aabb(&self) -> AABB {
