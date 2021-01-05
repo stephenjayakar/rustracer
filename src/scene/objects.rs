@@ -149,9 +149,7 @@ impl Object {
 			BSDF::Specular => {
 				// a reflection is a rotation 180deg around the z axis,
 				// and then you flip the direction.
-				let wi = Vector::new(-wo.x(),
-									 -wo.y(),
-									 wo.z()).to_coord_space(normal);
+				let wi = wo - normal * 2.0 * wo.dot(normal);
 				let pdf = 1.0;
 				let cos_theta = f64::abs(wi.dot(normal));
 				// undoing the cos theta multiplication in the raytracer
