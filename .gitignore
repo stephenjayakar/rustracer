@@ -1,5 +1,5 @@
 /target
 .DS_Store
 proto.py
-*.png
+dump/
 
