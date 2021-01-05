@@ -1,15 +1,20 @@
 extern crate sdl2;
 
+use bvh::bvh::BVH;
+
 mod geo;
 mod objects;
 
 pub use geo::{Point, Ray, Vector};
-use objects::{Material, Object, Plane, Sphere, BSDF};
+use objects::{Material, Object, Triangle, Sphere, BSDF};
 
 use crate::common::{Spectrum, GENERIC_ERROR, EPS};
 
 pub struct Scene {
-	objects: Vec<Box<dyn Object>>,
+    triangles: Vec<Triangle>,
+	triangle_bvh: BVH,
+    spheres: Vec<Sphere>,
+	sphere_bvh: BVH,
 	// TODO: Figure out how to cache this in a thread safe way
 	// lights: Vec<&'a dyn Object>,
 }
@@ -45,21 +50,16 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    fn new(planes: Vec<Plane>, spheres: Vec<Sphere>) -> Scene {
-		let mut objects = Vec::<Box<dyn Object>>::new();
-		for plane in planes {
-			objects.push(Box::new(plane));
-		}
-		for sphere in spheres {
-			objects.push(Box::new(sphere));
-		}
-		Scene { objects }
+    fn new(mut triangles: Vec<Triangle>, mut spheres: Vec<Sphere>) -> Scene {
+		let sphere_bvh = BVH::build(&mut spheres);
+		let triangle_bvh = BVH::build(&mut triangles);
+		Scene { triangles, spheres, sphere_bvh, triangle_bvh }
     }
 
 	/// Creates a Cornell box of sorts
     pub fn new_preset() -> Scene {
 		let half_length = 20.0;
-		let box_z_offset = -50.0;
+		let box_z_offset = -48.0;
         let red_diffuse_material = Material::new(
             BSDF::Diffuse,
             Spectrum::red(),
@@ -98,59 +98,133 @@ impl Scene {
 								   box_z_offset - half_length / 3.0),
 						sphere_radius,
 						red_diffuse_material),
-			// insert the light at the top of the scene, halfway through the plane
+			// insert the light at the top of the scene, halfway through the triangle
             Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
         ];
 
-        let planes = vec![
+		let z = box_z_offset - half_length;
+		let p0 = Point::new(-half_length, -half_length, box_z_offset);
+		let p1 = Point::new(-half_length, -half_length, z);
+		let p2 = Point::new(half_length, -half_length, z);
+		let p3 = Point::new(half_length, -half_length, box_z_offset);
+		let p4 = Point::new(-half_length, half_length,  z);
+		let p5 = Point::new(half_length, half_length, z);
+		let p6 = Point::new(-half_length, half_length, box_z_offset);
+		let p7 = Point::new(half_length, half_length, box_z_offset);
+		let p8 = Point::new(-half_length, half_length, box_z_offset);
+		let p9 = Point::new(-half_length, half_length, z);
+		let p10 = Point::new(half_length, half_length, z);
+		let p11 = Point::new(half_length, half_length, box_z_offset);
+
+        let triangles = vec![
 			// bottom wall
-			Plane::new(
-				Point::new(0.0, -half_length, 0.0),
-				Vector::new(0.0, 1.0, 0.0),
+			Triangle::new(
+				p1,
+				p0,
+				p2,
 				grey_diffuse_material,
 			),
-			// left wall
-			Plane::new(
-				Point::new(-half_length, 0.0, 0.0),
-				Vector::new(1.0, 0.0, 0.0),
-				red_diffuse_material,
-			),
-			// right wall
-			Plane::new(
-				Point::new(half_length, 0.0, 0.0),
-				Vector::new(-1.0, 0.0, 0.0),
-				blue_diffuse_material,
-			),
-			// back wall is only half length depth
-			Plane::new(
-				Point::new(0.0, 0.0, box_z_offset - half_length),
-				Vector::new(0.0, 0.0, 1.0),
-				green_diffuse_material,
+			Triangle::new(
+				p3,
+				p2,
+				p0,
+				grey_diffuse_material,
 			),
 			// top wall
-			Plane::new(
-				Point::new(0.0, half_length, 0.0),
-				Vector::new(0.0, -1.0, 0.0),
+			Triangle::new(
+				p4,
+				p5,
+				p6,
 				grey_diffuse_material,
 			),
+			Triangle::new(
+				p7,
+				p6,
+				p5,
+				grey_diffuse_material,
+			),
+			// back wall
+			Triangle::new(
+				p4,
+				p1,
+				p2,
+				green_diffuse_material,
+			),
+			Triangle::new(
+				p2,
+				p5,
+				p4,
+				green_diffuse_material,
+			),
+			// left wall was red
+			Triangle::new(
+				p8,
+				p0,
+				p9,
+				red_diffuse_material,
+			),
+			Triangle::new(
+				p9,
+				p8,
+				p1,
+				red_diffuse_material,
+			),
+			Triangle::new(
+				p3,
+				p11,
+				p2,
+				blue_diffuse_material,
+			),
+			Triangle::new(
+				p10,
+				p2,
+				p11,
+				blue_diffuse_material,
+			),
 		];
-        Scene::new(planes, spheres)
+        Scene::new(triangles, spheres)
+    }
+
+    // allows indexing across multiple object data structures
+    fn get_object_by_index(&self, index: usize) -> &dyn Object {
+        let triangles_len = self.triangles.len();
+        let spheres_len = self.spheres.len();
+
+        if index < triangles_len {
+            self.triangles.get(index).expect(GENERIC_ERROR)
+        } else if index < triangles_len + spheres_len {
+            self.spheres.get(index - triangles_len).expect(GENERIC_ERROR)
+        } else {
+            panic!("index out of range of scene");
+        }
     }
 
     fn num_objects(&self) -> usize {
-		self.objects.len()
+        self.triangles.len() + self.spheres.len()
     }
 
 	/// Intersects the scene with the given ray and takes ownership of it,
 	/// in order to populate it in the intersection object without copying.
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
-        let mut min_object = None;
-        for object in &self.objects {
-            if let Some(d) = object.intersect(&ray) {
+        let mut min_object: Option<&dyn Object> = None;
+		// test sphere intersections
+		// yikes two
+		let hit_sphere_aabbs = self.sphere_bvh.traverse(&ray_to_bvh_ray(&ray), &self.spheres);
+		for sphere in hit_sphere_aabbs {
+            if let Some(d) = sphere.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
-                    min_object = Some(object);
+                    min_object = Some(sphere);
+                }
+            }
+		}
+		let hit_triangle_aabbs = self.triangle_bvh.traverse(&ray_to_bvh_ray(&ray), &self.triangles);
+		for triangle in hit_triangle_aabbs {
+            if let Some(d) = triangle.intersect(&ray) {
+                if d < min_dist {
+                    min_dist = d;
+                    min_object = Some(triangle);
                 }
             }
         }
@@ -166,11 +240,23 @@ impl Scene {
 
 	pub fn lights(&self) -> Vec<&dyn Object> {
 		let mut lights = Vec::<&dyn Object>::new();
-		for object in &self.objects {
-			if !object.material().emittance.is_black() {
-				lights.push(object.as_ref());
+		for triangle in &self.triangles {
+			if !triangle.material().emittance.is_black() {
+				lights.push(triangle);
 			}
+		}
+		for sphere in &self.spheres {
+			if !sphere.material().emittance.is_black() {
+				lights.push(sphere);
+			}
+
 		}
 		lights
 	}
+}
+
+pub fn ray_to_bvh_ray(ray: &Ray) -> bvh::ray::Ray {
+	let origin = bvh::nalgebra::Point3::new(ray.origin.x() as f32, ray.origin.y() as f32, ray.origin.z() as f32);
+	let direction = bvh::nalgebra::Vector3::new(ray.direction.x() as f32, ray.direction.y() as f32, ray.direction.z() as f32);
+	bvh::ray::Ray::new(origin, direction)
 }

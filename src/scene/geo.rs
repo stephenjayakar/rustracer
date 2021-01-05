@@ -35,6 +35,10 @@ impl Point {
         Point::new_from_na(p)
     }
 
+	pub fn origin() -> Point {
+		Point::new(0.0, 0.0, 0.0)
+	}
+
     fn new_from_na(p: Point3<f64>) -> Point {
         Point { p }
     }
@@ -136,6 +140,10 @@ impl Vector {
         self.v.dot(&other_vector.v)
     }
 
+	pub fn cross(&self, other_vector: Vector) -> Vector {
+		Vector::new_from_na(self.v.cross(&other_vector.v))
+	}
+
     pub fn x(&self) -> f64 {
         self.v[0]
     }
@@ -162,6 +170,14 @@ impl Add<Vector> for Point {
 
     fn add(self, other: Vector) -> Self::Output {
         Point::new_from_na(self.p + other.v)
+    }
+}
+
+impl Sub<Vector> for Point {
+    type Output = Point;
+
+    fn sub(self, other: Vector) -> Self::Output {
+        Point::new_from_na(self.p - other.v)
     }
 }
 
