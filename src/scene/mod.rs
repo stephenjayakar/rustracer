@@ -192,8 +192,6 @@ impl Scene {
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
         let mut min_object: Option<&Object> = None;
-		// test sphere intersections
-		// yikes two
 		let hit_obj_aabbs = self.bvh.traverse(&ray_to_bvh_ray(&ray), &self.objects);
 		for object in hit_obj_aabbs {
             if let Some(d) = object.intersect(&ray) {
