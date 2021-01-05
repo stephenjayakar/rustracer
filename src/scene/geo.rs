@@ -78,7 +78,7 @@ impl Vector {
     /// Basically copied this from my 184 project, as the naive way that I was going
     /// to implement was biased towards vectors going towards the normal.  Oops.
     /// TODO: Figure out how this works.
-    pub fn random_hemisphere(normal: Vector) -> Vector {
+    pub fn random_hemisphere() -> Vector {
         // creating a random vector in object space
         let xi1 = fastrand::f64();
         let xi2 = fastrand::f64();
@@ -89,6 +89,10 @@ impl Vector {
         let ys = f64::sin(theta) * f64::sin(phi);
         let zs = f64::cos(theta);
 
+        Vector::new(xs, ys, zs)
+    }
+
+	pub fn to_coord_space(&self, normal: Vector) -> Vector {
         // make_coord_space from 184.  make it a function if we use it again
         // TODO: unsure if these clones are necessary
 		// special handling if normal is (0, 1, 0), as cross products will be undefined.
@@ -111,8 +115,8 @@ impl Vector {
         let x = z.cross(&y).normalize();
 
         let o2w = Matrix3::from_columns(&[x, y, z]);
-        Vector::new_from_na(o2w * Vector3::new(xs, ys, zs))
-    }
+        Vector::new_from_na(o2w * self.v)
+	}
 
 	/// Samples uniformly on a unit sphere and returns the associated vector
 	pub fn random_sphere() -> Vector {

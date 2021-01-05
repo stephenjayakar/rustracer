@@ -9,6 +9,7 @@ use super::{Point, Ray, Vector};
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
     Diffuse,
+	Specular,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -121,6 +122,46 @@ impl Object {
 			}
 		}
 	}
+
+	pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
+		let material = self.material();
+		match material.bsdf {
+            BSDF::Diffuse => material.reflectance * (1.0 / PI),
+			BSDF::Specular => { Spectrum::black() }
+        }
+
+	}
+
+	/// Use instead of bsdf when you want to bounce the vector.
+	pub fn sample_bsdf(&self, wo: Vector, normal: Vector) -> BSDFSample {
+		let material = self.material();
+		match material.bsdf {
+			BSDF::Diffuse => {
+				let wi = Vector::random_hemisphere().to_coord_space(normal);
+				let pdf = 2.0 * PI;
+				let reflected = self.bsdf(wi, wo);
+				BSDFSample {
+					wi,
+					pdf,
+					reflected,
+				}
+			},
+			BSDF::Specular => {
+				// a reflection is a rotation 180deg around the z axis,
+				// and then you flip the direction.
+				let wi = wo - normal * 2.0 * wo.dot(normal);
+				let pdf = 1.0;
+				let cos_theta = f64::abs(wi.dot(normal));
+				// undoing the cos theta multiplication in the raytracer
+				let reflected = material.reflectance * (1.0 / cos_theta);
+				BSDFSample {
+					wi,
+					pdf,
+					reflected,
+				}
+			},
+		}
+	}
 }
 
 impl Bounded for Object {
@@ -176,18 +217,18 @@ pub struct Triangle {
 	node_index: usize,
 }
 
+pub struct BSDFSample {
+	pub wi: Vector,
+	pub pdf: f64,
+	pub reflected: Spectrum,
+}
+
 impl Material {
     pub fn new(bsdf: BSDF, reflectance: Spectrum, emittance: Spectrum) -> Material {
         Material {
             bsdf,
             reflectance,
             emittance,
-        }
-    }
-
-    pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
-        match self.bsdf {
-            BSDF::Diffuse => self.reflectance * (1.0 / PI),
         }
     }
 }

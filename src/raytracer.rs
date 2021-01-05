@@ -21,7 +21,7 @@ impl Raytracer {
         Raytracer {
             config,
             canvas,
-            scene: Scene::new_preset(),
+            scene: Scene::new_specular(),
         }
     }
 
@@ -93,12 +93,12 @@ impl Raytracer {
         for _ in 0..num_samples {
             // direct lighting
             let wo = ray.direction;
-            let wi = Vector::random_hemisphere(normal);
+            let wi = Vector::random_hemisphere().to_coord_space(normal);
             let bounced_ray = Ray::new(intersection_point, wi);
 			let other_emittance = self.cast_ray(bounced_ray, 0);
 
             if !other_emittance.is_black() {
-				let reflected = object.material().bsdf(wi, wo);
+				let reflected = object.bsdf(wi, wo);
 				let cos_theta = f64::abs(wi.dot(normal));
                 let color =
                     other_emittance * reflected * cos_theta * 2.0 * PI;
@@ -128,7 +128,7 @@ impl Raytracer {
 				let other_emittance = self.cast_ray(bounced_ray, 0);
 
 				if !other_emittance.is_black() {
-					let reflected = object.material().bsdf(wi, wo);
+					let reflected = object.bsdf(wi, wo);
 					let cos_theta = f64::abs(wi.dot(normal));
 					color +=
 						other_emittance * reflected * cos_theta * pdf;
@@ -148,20 +148,21 @@ impl Raytracer {
 		let ray = intersection.ray();
 
 		let mut l = self.one_bounce_radiance_importance(intersection);
+
 		// russian roulette for "infinite bounces"
 		let sample = fastrand::f32();
 		if sample > RUSSIAN_ROULETTE_PROBABILITY {
 			return l
 		}
 
-		let wi = Vector::random_hemisphere(normal);
 		let wo = ray.direction;
+		let sample = object.sample_bsdf(wo, normal);
+		let (wi, pdf, reflected) = (sample.wi, sample.pdf, sample.reflected);
+
 		let bounced_ray = Ray::new(intersection_point, wi);
 		let mut color = self.cast_ray(bounced_ray, bounces_left - 1);
-		let pdf = 2.0 * PI;
 
 		if !color.is_black() {
-			let reflected = object.material().bsdf(wi, wo);
 			let cos_theta = f64::abs(wi.dot(normal));
 			color =
 				color * reflected * cos_theta * pdf;

@@ -47,6 +47,17 @@ impl<'a> RayIntersection<'a> {
 	}
 }
 
+struct CornellBox {
+	triangles: Vec<Triangle>,
+	half_length: f64,
+	box_z_offset: f64,
+	red_diffuse_material: Material,
+	green_diffuse_material: Material,
+	blue_diffuse_material: Material,
+	grey_diffuse_material: Material,
+	sphere_light: Sphere,
+}
+
 impl Scene {
     fn new(triangles: Vec<Triangle>, spheres: Vec<Sphere>) -> Scene {
 		let mut objects = Vec::new();
@@ -70,8 +81,7 @@ impl Scene {
 		Scene { objects, bvh, light_indexes }
     }
 
-	/// Creates a Cornell box of sorts
-    pub fn new_preset() -> Scene {
+	fn cornell_box() -> CornellBox {
 		let half_length = 20.0;
 		let box_z_offset = -48.0;
         let red_diffuse_material = Material::new(
@@ -100,35 +110,28 @@ impl Scene {
             Spectrum::white(),
         );
 		let light_radius = 7.0;
-		let sphere_radius = 6.0;
-        let spheres = vec![
-			Sphere::new(Point::new(-half_length / 3.0,
-								   -half_length + sphere_radius,
-								   box_z_offset - 2.0 * half_length / 3.0),
-						sphere_radius,
-						grey_diffuse_material),
-			Sphere::new(Point::new(half_length / 3.0,
-								   -half_length + sphere_radius,
-								   box_z_offset - half_length / 3.0),
-						sphere_radius,
-						red_diffuse_material),
-			// insert the light at the top of the scene, halfway through the triangle
-            Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
-        ];
+		// insert the light at the top of the scene, halfway through the triangle
+        let sphere_light = Sphere::new(Point::new(0.0,
+												  half_length + light_radius * 0.6,
+												  box_z_offset - half_length / 2.0),
+									   light_radius,
+									   white_light_material);
 
 		let z = box_z_offset - half_length;
-		let p0 = Point::new(-half_length, -half_length, 0.0);
+		let p0 = Point::new(-half_length, -half_length, 1.0);
 		let p1 = Point::new(-half_length, -half_length, z);
 		let p2 = Point::new(half_length, -half_length, z);
-		let p3 = Point::new(half_length, -half_length, 0.0);
+		let p3 = Point::new(half_length, -half_length, 1.0);
 		let p4 = Point::new(-half_length, half_length,  z);
 		let p5 = Point::new(half_length, half_length, z);
-		let p6 = Point::new(-half_length, half_length, 0.0);
-		let p7 = Point::new(half_length, half_length, 0.0);
-		let p8 = Point::new(-half_length, half_length, 0.0);
+		let p6 = Point::new(-half_length, half_length, 1.0);
+		let p7 = Point::new(half_length, half_length, 1.0);
+		let p8 = Point::new(-half_length, half_length, 1.0);
 		let p9 = Point::new(-half_length, half_length, z);
 		let p10 = Point::new(half_length, half_length, z);
-		let p11 = Point::new(half_length, half_length, 0.0);
+		let p11 = Point::new(half_length, half_length, 1.0);
+		// let p12 = Point::new(-half_length, half_length, 1.0);
+		// let p13 = Point::new(half_length, half_length, 1.0);
 
         let triangles = vec![
 			// bottom wall
@@ -170,7 +173,7 @@ impl Scene {
 				p4,
 				green_diffuse_material,
 			),
-			// left wall was red
+			// left wall
 			Triangle::new(
 				p8,
 				p0,
@@ -183,6 +186,7 @@ impl Scene {
 				p1,
 				red_diffuse_material,
 			),
+			// right wall
 			Triangle::new(
 				p3,
 				p11,
@@ -195,7 +199,86 @@ impl Scene {
 				p11,
 				blue_diffuse_material,
 			),
+			// wall behind camera
+			// Triangle::new(
+			// 	p12,
+			// 	p13,
+			// 	p0,
+			// 	grey_diffuse_material,
+			// ),
+			// Triangle::new(
+			// 	p3,
+			// 	p0,
+			// 	p13,
+			// 	grey_diffuse_material,
+			// ),
 		];
+
+		CornellBox {
+			triangles,
+			sphere_light,
+			half_length,
+			box_z_offset,
+		    red_diffuse_material,
+		    green_diffuse_material,
+		    blue_diffuse_material,
+		    grey_diffuse_material,
+		}
+	}
+
+	pub fn new_specular() -> Scene {
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 red_diffuse_material,
+			 triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let mirror_material = Material::new(
+			BSDF::Specular,
+			Spectrum::white(),
+			Spectrum::black(),
+		);
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(-half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - 2.0 * half_length / 3.0),
+						sphere_radius,
+						mirror_material),
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+        ];
+
+        Scene::new(triangles, spheres)
+	}
+
+    pub fn new_diffuse() -> Scene {
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 grey_diffuse_material,
+			 red_diffuse_material,
+			 triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.grey_diffuse_material, cb.red_diffuse_material, cb.triangles);
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(-half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - 2.0 * half_length / 3.0),
+						sphere_radius,
+						grey_diffuse_material),
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+        ];
+
         Scene::new(triangles, spheres)
     }
 
