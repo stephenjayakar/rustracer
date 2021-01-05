@@ -93,7 +93,7 @@ impl Raytracer {
         for _ in 0..num_samples {
             // direct lighting
             let wo = ray.direction;
-            let wi = Vector::random_hemisphere(normal);
+            let wi = Vector::random_hemisphere().to_coord_space(normal);
             let bounced_ray = Ray::new(intersection_point, wi);
 			let other_emittance = self.cast_ray(bounced_ray, 0);
 
@@ -154,14 +154,14 @@ impl Raytracer {
 			return l
 		}
 
-		let wi = Vector::random_hemisphere(normal);
 		let wo = ray.direction;
+		let sample = object.sample_bsdf(wo, normal);
+		let (wi, pdf, reflected) = (sample.wi, sample.pdf, sample.reflected);
+
 		let bounced_ray = Ray::new(intersection_point, wi);
 		let mut color = self.cast_ray(bounced_ray, bounces_left - 1);
-		let pdf = 2.0 * PI;
 
 		if !color.is_black() {
-			let reflected = object.material().bsdf(wi, wo);
 			let cos_theta = f64::abs(wi.dot(normal));
 			color =
 				color * reflected * cos_theta * pdf;

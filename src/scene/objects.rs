@@ -9,6 +9,7 @@ use super::{Point, Ray, Vector};
 #[derive(Clone, Copy, Debug)]
 pub enum BSDF {
     Diffuse,
+	Specular,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -121,6 +122,12 @@ impl Object {
 			}
 		}
 	}
+
+	pub fn sample_bsdf(&self, wo: Vector, normal: Vector) -> BSDFSample {
+		let mut bsdf_sample = self.material().sample_bsdf(wo);
+		bsdf_sample.wi = bsdf_sample.wi.to_coord_space(normal);
+		bsdf_sample
+	}
 }
 
 impl Bounded for Object {
@@ -176,6 +183,12 @@ pub struct Triangle {
 	node_index: usize,
 }
 
+pub struct BSDFSample {
+	pub wi: Vector,
+	pub pdf: f64,
+	pub reflected: Spectrum,
+}
+
 impl Material {
     pub fn new(bsdf: BSDF, reflectance: Spectrum, emittance: Spectrum) -> Material {
         Material {
@@ -188,8 +201,27 @@ impl Material {
     pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
         match self.bsdf {
             BSDF::Diffuse => self.reflectance * (1.0 / PI),
+			BSDF::Specular => unimplemented!(),
         }
     }
+
+	/// Note: the returned wi here is in object space as the material does not have knowledge
+	/// of the object's normal, especially at the point.
+	pub fn sample_bsdf(&self, wo: Vector) -> BSDFSample {
+		match self.bsdf {
+			BSDF::Diffuse => {
+				let wi = Vector::random_hemisphere();
+				let pdf = 2.0 * PI;
+				let reflected = self.bsdf(wi, wo);
+				BSDFSample {
+					wi,
+					pdf,
+					reflected,
+				}
+			},
+			BSDF::Specular => unimplemented!(),
+		}
+	}
 }
 
 impl Sphere {
