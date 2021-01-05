@@ -1,23 +1,25 @@
 extern crate sdl2;
 
+use bvh::bvh::BVH;
+
 mod geo;
 mod objects;
 
 pub use geo::{Point, Ray, Vector};
-use objects::{Material, Object, Plane, Sphere, BSDF};
+use objects::{Material, Object, Triangle, Sphere, BSDF};
 
-use crate::common::{Spectrum, GENERIC_ERROR, EPS};
+use crate::common::{EPS, Spectrum};
 
+/// The Scene is static. Please don't change it unless you update the acceleration structures!
 pub struct Scene {
-    planes: Vec<Plane>,
-    spheres: Vec<Sphere>,
-	// TODO: Figure out how to cache this in a thread safe way
-	// lights: Vec<&'a dyn Object>,
+	objects: Vec<Object>,
+	bvh: BVH,
+	light_indexes: Vec<usize>,
 }
 
 pub struct RayIntersection<'a> {
     distance: f64,
-    object: &'a dyn Object,
+    object: &'a Object,
 	ray: Ray,
 }
 
@@ -26,7 +28,7 @@ impl<'a> RayIntersection<'a> {
 		self.distance
 	}
 
-	pub fn object(&self) -> &'a dyn Object {
+	pub fn object(&self) -> &'a Object {
 		self.object
 	}
 
@@ -46,14 +48,32 @@ impl<'a> RayIntersection<'a> {
 }
 
 impl Scene {
-    fn new(planes: Vec<Plane>, spheres: Vec<Sphere>) -> Scene {
-		Scene { planes, spheres }
+    fn new(triangles: Vec<Triangle>, spheres: Vec<Sphere>) -> Scene {
+		let mut objects = Vec::new();
+		for triangle in triangles {
+			objects.push(Object::Triangle(triangle));
+		}
+		for sphere in spheres {
+			objects.push(Object::Sphere(sphere));
+		}
+
+		let mut light_indexes = Vec::new();
+		for i in 0..objects.len() {
+			let object = objects.get(i).unwrap();
+			if !object.material().emittance.is_black() {
+				light_indexes.push(i);
+			}
+		}
+
+		let bvh = BVH::build(&mut objects);
+
+		Scene { objects, bvh, light_indexes }
     }
 
 	/// Creates a Cornell box of sorts
     pub fn new_preset() -> Scene {
 		let half_length = 20.0;
-		let box_z_offset = -50.0;
+		let box_z_offset = -48.0;
         let red_diffuse_material = Material::new(
             BSDF::Diffuse,
             Spectrum::red(),
@@ -92,77 +112,107 @@ impl Scene {
 								   box_z_offset - half_length / 3.0),
 						sphere_radius,
 						red_diffuse_material),
-			// insert the light at the top of the scene, halfway through the plane
+			// insert the light at the top of the scene, halfway through the triangle
             Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
         ];
 
-        let planes = vec![
+		let z = box_z_offset - half_length;
+		let p0 = Point::new(-half_length, -half_length, 0.0);
+		let p1 = Point::new(-half_length, -half_length, z);
+		let p2 = Point::new(half_length, -half_length, z);
+		let p3 = Point::new(half_length, -half_length, 0.0);
+		let p4 = Point::new(-half_length, half_length,  z);
+		let p5 = Point::new(half_length, half_length, z);
+		let p6 = Point::new(-half_length, half_length, 0.0);
+		let p7 = Point::new(half_length, half_length, 0.0);
+		let p8 = Point::new(-half_length, half_length, 0.0);
+		let p9 = Point::new(-half_length, half_length, z);
+		let p10 = Point::new(half_length, half_length, z);
+		let p11 = Point::new(half_length, half_length, 0.0);
+
+        let triangles = vec![
 			// bottom wall
-			Plane::new(
-				Point::new(0.0, -half_length, 0.0),
-				Vector::new(0.0, 1.0, 0.0),
+			Triangle::new(
+				p1,
+				p0,
+				p2,
 				grey_diffuse_material,
 			),
-			// left wall
-			Plane::new(
-				Point::new(-half_length, 0.0, 0.0),
-				Vector::new(1.0, 0.0, 0.0),
-				red_diffuse_material,
-			),
-			// right wall
-			Plane::new(
-				Point::new(half_length, 0.0, 0.0),
-				Vector::new(-1.0, 0.0, 0.0),
-				blue_diffuse_material,
-			),
-			// back wall is only half length depth
-			Plane::new(
-				Point::new(0.0, 0.0, box_z_offset - half_length),
-				Vector::new(0.0, 0.0, 1.0),
-				green_diffuse_material,
+			Triangle::new(
+				p3,
+				p2,
+				p0,
+				grey_diffuse_material,
 			),
 			// top wall
-			Plane::new(
-				Point::new(0.0, half_length, 0.0),
-				Vector::new(0.0, -1.0, 0.0),
+			Triangle::new(
+				p4,
+				p5,
+				p6,
 				grey_diffuse_material,
 			),
+			Triangle::new(
+				p7,
+				p6,
+				p5,
+				grey_diffuse_material,
+			),
+			// back wall
+			Triangle::new(
+				p4,
+				p1,
+				p2,
+				green_diffuse_material,
+			),
+			Triangle::new(
+				p2,
+				p5,
+				p4,
+				green_diffuse_material,
+			),
+			// left wall was red
+			Triangle::new(
+				p8,
+				p0,
+				p9,
+				red_diffuse_material,
+			),
+			Triangle::new(
+				p9,
+				p8,
+				p1,
+				red_diffuse_material,
+			),
+			Triangle::new(
+				p3,
+				p11,
+				p2,
+				blue_diffuse_material,
+			),
+			Triangle::new(
+				p10,
+				p2,
+				p11,
+				blue_diffuse_material,
+			),
 		];
-        Scene::new(planes, spheres)
-    }
-
-    // allows indexing across multiple object data structures
-    fn get_object_by_index(&self, index: usize) -> &dyn Object {
-        let planes_len = self.planes.len();
-        let spheres_len = self.spheres.len();
-
-        if index < planes_len {
-            self.planes.get(index).expect(GENERIC_ERROR)
-        } else if index < planes_len + spheres_len {
-            self.spheres.get(index - planes_len).expect(GENERIC_ERROR)
-        } else {
-            panic!("index out of range of scene");
-        }
-    }
-
-    fn num_objects(&self) -> usize {
-        self.planes.len() + self.spheres.len()
+        Scene::new(triangles, spheres)
     }
 
 	/// Intersects the scene with the given ray and takes ownership of it,
 	/// in order to populate it in the intersection object without copying.
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
-        let mut min_object = None;
-        for i in 0..self.num_objects() {
-            let object = self.get_object_by_index(i);
+        let mut min_object: Option<&Object> = None;
+		let hit_obj_aabbs = self.bvh.traverse(&ray_to_bvh_ray(&ray), &self.objects);
+		for object in hit_obj_aabbs {
             if let Some(d) = object.intersect(&ray) {
                 if d < min_dist {
                     min_dist = d;
                     min_object = Some(object);
                 }
             }
-        }
+		}
         match min_object {
             Some(object) => Some(RayIntersection {
                 object,
@@ -173,18 +223,15 @@ impl Scene {
         }
     }
 
-	pub fn lights(&self) -> Vec<&dyn Object> {
-		let mut lights = Vec::<&dyn Object>::new();
-		for plane in &self.planes {
-			if !plane.material().emittance.is_black() {
-				lights.push(plane);
-			}
-		}
-		for sphere in &self.spheres {
-			if !sphere.material().emittance.is_black() {
-				lights.push(sphere);
-			}
-		}
-		lights
+	pub fn lights(&self) -> Vec<&Object> {
+		self.light_indexes.iter().map(|i| {
+			self.objects.get(*i).unwrap()
+		}).collect()
 	}
+}
+
+pub fn ray_to_bvh_ray(ray: &Ray) -> bvh::ray::Ray {
+	let origin = bvh::nalgebra::Point3::new(ray.origin.x() as f32, ray.origin.y() as f32, ray.origin.z() as f32);
+	let direction = bvh::nalgebra::Vector3::new(ray.direction.x() as f32, ray.direction.y() as f32, ray.direction.z() as f32);
+	bvh::ray::Ray::new(origin, direction)
 }
