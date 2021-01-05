@@ -123,10 +123,46 @@ impl Object {
 		}
 	}
 
+	pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
+		let material = self.material();
+		match material.bsdf {
+            BSDF::Diffuse => material.reflectance * (1.0 / PI),
+			BSDF::Specular => { Spectrum::black() }
+        }
+
+	}
+
+	/// Use instead of bsdf when you want to bounce the vector.
 	pub fn sample_bsdf(&self, wo: Vector, normal: Vector) -> BSDFSample {
-		let mut bsdf_sample = self.material().sample_bsdf(wo);
-		bsdf_sample.wi = bsdf_sample.wi.to_coord_space(normal);
-		bsdf_sample
+		let material = self.material();
+		match material.bsdf {
+			BSDF::Diffuse => {
+				let wi = Vector::random_hemisphere().to_coord_space(normal);
+				let pdf = 2.0 * PI;
+				let reflected = self.bsdf(wi, wo);
+				BSDFSample {
+					wi,
+					pdf,
+					reflected,
+				}
+			},
+			BSDF::Specular => {
+				// a reflection is a rotation 180deg around the z axis,
+				// and then you flip the direction.
+				let wi = Vector::new(-wo.x(),
+									 -wo.y(),
+									 wo.z()).to_coord_space(normal);
+				let pdf = 1.0;
+				let cos_theta = f64::abs(wi.dot(normal));
+				// undoing the cos theta multiplication in the raytracer
+				let reflected = material.reflectance * (1.0 / cos_theta);
+				BSDFSample {
+					wi,
+					pdf,
+					reflected,
+				}
+			},
+		}
 	}
 }
 
@@ -197,31 +233,6 @@ impl Material {
             emittance,
         }
     }
-
-    pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
-        match self.bsdf {
-            BSDF::Diffuse => self.reflectance * (1.0 / PI),
-			BSDF::Specular => unimplemented!(),
-        }
-    }
-
-	/// Note: the returned wi here is in object space as the material does not have knowledge
-	/// of the object's normal, especially at the point.
-	pub fn sample_bsdf(&self, wo: Vector) -> BSDFSample {
-		match self.bsdf {
-			BSDF::Diffuse => {
-				let wi = Vector::random_hemisphere();
-				let pdf = 2.0 * PI;
-				let reflected = self.bsdf(wi, wo);
-				BSDFSample {
-					wi,
-					pdf,
-					reflected,
-				}
-			},
-			BSDF::Specular => unimplemented!(),
-		}
-	}
 }
 
 impl Sphere {

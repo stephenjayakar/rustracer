@@ -99,6 +99,11 @@ impl Scene {
             Spectrum::black(),
             Spectrum::white(),
         );
+		let mirror_material = Material::new(
+			BSDF::Specular,
+			Spectrum::white(),
+			Spectrum::black(),
+		);
 		let light_radius = 7.0;
 		let sphere_radius = 6.0;
         let spheres = vec![
@@ -111,7 +116,7 @@ impl Scene {
 								   -half_length + sphere_radius,
 								   box_z_offset - half_length / 3.0),
 						sphere_radius,
-						red_diffuse_material),
+						mirror_material),
 			// insert the light at the top of the scene, halfway through the triangle
             Sphere::new(Point::new(0.0, half_length + light_radius * 0.6, box_z_offset - half_length / 2.0), light_radius, white_light_material),
         ];

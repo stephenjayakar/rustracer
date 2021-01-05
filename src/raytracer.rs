@@ -98,7 +98,7 @@ impl Raytracer {
 			let other_emittance = self.cast_ray(bounced_ray, 0);
 
             if !other_emittance.is_black() {
-				let reflected = object.material().bsdf(wi, wo);
+				let reflected = object.bsdf(wi, wo);
 				let cos_theta = f64::abs(wi.dot(normal));
                 let color =
                     other_emittance * reflected * cos_theta * 2.0 * PI;
@@ -128,7 +128,7 @@ impl Raytracer {
 				let other_emittance = self.cast_ray(bounced_ray, 0);
 
 				if !other_emittance.is_black() {
-					let reflected = object.material().bsdf(wi, wo);
+					let reflected = object.bsdf(wi, wo);
 					let cos_theta = f64::abs(wi.dot(normal));
 					color +=
 						other_emittance * reflected * cos_theta * pdf;
@@ -148,6 +148,7 @@ impl Raytracer {
 		let ray = intersection.ray();
 
 		let mut l = self.one_bounce_radiance_importance(intersection);
+
 		// russian roulette for "infinite bounces"
 		let sample = fastrand::f32();
 		if sample > RUSSIAN_ROULETTE_PROBABILITY {
