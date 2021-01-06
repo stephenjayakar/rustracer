@@ -10,6 +10,8 @@ use super::{Point, Ray, Vector};
 pub enum BSDF {
     Diffuse,
 	Specular,
+	// TODO: Figure out a convenient better way to do this.
+	/// The f64 is eta.
 	Glass(f64),
 }
 
@@ -28,6 +30,13 @@ pub struct LightSample {
 pub enum Object {
 	Triangle(Triangle),
 	Sphere(Sphere),
+}
+
+pub struct BSDFSample {
+	pub wi: Vector,
+	pub pdf: f64,
+	pub reflected: Spectrum,
+	pub intersection_point: Point,
 }
 
 impl Object {
@@ -72,12 +81,18 @@ impl Object {
 				let t0 = adj - thc;
 				let t1 = adj + thc;
 
-				if t0 < 0.0 && t1 < 0.0 {
-					return None;
+				let mut t = t0;
+				if t > t1 {
+					t = t1;
 				}
-
-				let distance = if t0 < t1 { t0 } else { t1 };
-				Some(distance)
+				if t < 0.0 {
+					t = t1;
+					if t0 < 0.0 {
+						return None
+					}
+				}
+				println!("{}", t);
+				Some(t)
 			}
 		}
 	}
@@ -135,8 +150,9 @@ impl Object {
 	}
 
 	/// Use instead of bsdf when you want to bounce the vector.
-	pub fn sample_bsdf(&self, wo: Vector, normal: Vector) -> BSDFSample {
+	pub fn sample_bsdf(&self, wo: Vector, intersection_point: Point) -> BSDFSample {
 		let material = self.material();
+		let normal = self.surface_normal(intersection_point);
 		match material.bsdf {
 			BSDF::Diffuse => {
 				let wi = Vector::random_hemisphere().to_coord_space(normal);
@@ -146,6 +162,7 @@ impl Object {
 					wi,
 					pdf,
 					reflected,
+					intersection_point,
 				}
 			},
 			BSDF::Specular => {
@@ -160,12 +177,15 @@ impl Object {
 					wi,
 					pdf,
 					reflected,
+					intersection_point,
 				}
 			},
 			BSDF::Glass(eta) => {
 				match refract(wo, normal, eta) {
 					// Total internal reflection
 					None => {
+						// TODO: do we do this?
+						let normal = -normal;
 						// TODO: Refactor this so I don't copy and paste reflect code.
 						let wi = reflect(wo, normal);
 						let pdf = 1.0;
@@ -177,6 +197,7 @@ impl Object {
 							wi,
 							pdf,
 							reflected,
+							intersection_point
 						}
 					},
 					// Refraction
@@ -196,16 +217,22 @@ impl Object {
 								wi,
 								pdf,
 								reflected,
+								intersection_point,
 							}
 						} else {
 							// refract
+							let wi = wo;
 							let pdf = 1.0 - R;
 							let inv_cos_theta = 1.0 / f64::abs(wi.dot(normal));
-							let reflected = material.reflectance * (inv_cos_theta) * pdf * f64::powi(eta, 2);
+							let reflected = material.reflectance * (inv_cos_theta) * f64::powi(eta, 2);
+							println!("biasing inside");
+							// bias the intersection point inside
+							let intersection_point = intersection_point - normal * EPS;
 							BSDFSample {
 								wi,
 								pdf,
-								reflected
+								reflected,
+								intersection_point,
 							}
 						}
 					},
@@ -220,18 +247,18 @@ fn reflect(v: Vector, n: Vector) -> Vector {
 	v - n * 2.0 * v.dot(n)
 }
 
-/// Convenience struct, as refract is aware
+/// Convenience struct for refract return value.
 struct Refraction {
 	wi: Vector,
 	R: f64,
 	eta: f64,
 }
 
-/// Scratchapixel
+/// Scratchapixel. Refraction algorithm over a normal.
 fn refract(v: Vector, normal: Vector, eta: f64) -> Option<Refraction> {
 	let mut n = normal;
 	let n_dot_v = n.dot(v);
-	let mut cosv = n_dot_v.clamp(1.0, 1.0);
+	let mut cosv = n_dot_v.clamp(-1.0, 1.0);
 	let mut etav = 1.0;
 	let mut etat = eta;
 	if cosv < 0.0 {
@@ -244,10 +271,13 @@ fn refract(v: Vector, normal: Vector, eta: f64) -> Option<Refraction> {
 	}
 	let eta = etav / etat;
 	let k = 1.0 - eta * eta * (1.0 - cosv * cosv);
+//	println!("{}, {}, {}, {}", n_dot_v, cosv, etav, etat);
 	if k < 0.0 {
+		// TODO: we never get here
 		None
 	} else {
-		let R = f64::powi((etav - etat) / (etav + etat), 2);
+		let R0 = f64::powi((etav - etat) / (etav + etat), 2);
+		let R  = (1.0 - R0) * f64::powi(1.0 - cosv, 5);
 		let wi = v * eta + n * (eta * cosv - f64::sqrt(k));
 		Some(Refraction {
 			wi,
@@ -308,12 +338,6 @@ pub struct Triangle {
 	normal: Vector,
     material: Material,
 	node_index: usize,
-}
-
-pub struct BSDFSample {
-	pub wi: Vector,
-	pub pdf: f64,
-	pub reflected: Spectrum,
 }
 
 impl Material {

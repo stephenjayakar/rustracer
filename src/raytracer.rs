@@ -156,8 +156,8 @@ impl Raytracer {
 		}
 
 		let wo = ray.direction;
-		let sample = object.sample_bsdf(wo, normal);
-		let (wi, pdf, reflected) = (sample.wi, sample.pdf, sample.reflected);
+		let sample = object.sample_bsdf(wo, intersection_point);
+		let (wi, pdf, reflected, intersection_point) = (sample.wi, sample.pdf, sample.reflected, sample.intersection_point);
 
 		let bounced_ray = Ray::new(intersection_point, wi);
 		let mut color = self.cast_ray(bounced_ray, bounces_left - 1);
