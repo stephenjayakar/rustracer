@@ -254,6 +254,36 @@ impl Scene {
         Scene::new(triangles, spheres)
 	}
 
+	pub fn new_glass() -> Scene {
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 red_diffuse_material,
+			 triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let glass_material = Material::new(
+			BSDF::Glass(1.5),
+			Spectrum::white(),
+			Spectrum::black(),
+		);
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(-half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - 2.0 * half_length / 3.0),
+						sphere_radius,
+						glass_material),
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+        ];
+
+        Scene::new(triangles, spheres)
+	}
+
     pub fn new_diffuse() -> Scene {
 		let cb = Scene::cornell_box();
 		let (half_length,

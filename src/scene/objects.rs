@@ -10,6 +10,7 @@ use super::{Point, Ray, Vector};
 pub enum BSDF {
     Diffuse,
 	Specular,
+	Glass(f64),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -128,6 +129,7 @@ impl Object {
 		match material.bsdf {
             BSDF::Diffuse => material.reflectance * (1.0 / PI),
 			BSDF::Specular => { Spectrum::black() }
+			BSDF::Glass(_) => { Spectrum::black() }
         }
 
 	}
@@ -149,7 +151,7 @@ impl Object {
 			BSDF::Specular => {
 				// a reflection is a rotation 180deg around the z axis,
 				// and then you flip the direction.
-				let wi = wo - normal * 2.0 * wo.dot(normal);
+				let wi = reflect(wo, normal);
 				let pdf = 1.0;
 				let cos_theta = f64::abs(wi.dot(normal));
 				// undoing the cos theta multiplication in the raytracer
@@ -160,7 +162,98 @@ impl Object {
 					reflected,
 				}
 			},
+			BSDF::Glass(eta) => {
+				match refract(wo, normal, eta) {
+					// Total internal reflection
+					None => {
+						// TODO: Refactor this so I don't copy and paste reflect code.
+						let wi = reflect(wo, normal);
+						let pdf = 1.0;
+						let inv_cos_theta = 1.0 / f64::abs(wi.dot(normal));
+
+						// undoing the cos theta multiplication in the raytracer
+						let reflected = material.reflectance * (inv_cos_theta);
+						BSDFSample {
+							wi,
+							pdf,
+							reflected,
+						}
+					},
+					// Refraction
+					Some(refraction) => {
+						let (wi, R, eta) = (refraction.wi, refraction.R, refraction.eta);
+						let rand = fastrand::f64();
+
+						if rand > R {
+							// reflect
+							let wi = reflect(wo, normal);
+							let pdf = R;
+							let inv_cos_theta = 1.0 / f64::abs(wi.dot(normal));
+
+							// undoing the cos theta multiplication in the raytracer
+							let reflected = material.reflectance * (inv_cos_theta);
+							BSDFSample {
+								wi,
+								pdf,
+								reflected,
+							}
+						} else {
+							// refract
+							let pdf = 1.0 - R;
+							let inv_cos_theta = 1.0 / f64::abs(wi.dot(normal));
+							let reflected = material.reflectance * (inv_cos_theta) * pdf * f64::powi(eta, 2);
+							BSDFSample {
+								wi,
+								pdf,
+								reflected
+							}
+						}
+					},
+				}
+			}
 		}
+	}
+}
+
+/// Scratchapixel
+fn reflect(v: Vector, n: Vector) -> Vector {
+	v - n * 2.0 * v.dot(n)
+}
+
+/// Convenience struct, as refract is aware
+struct Refraction {
+	wi: Vector,
+	R: f64,
+	eta: f64,
+}
+
+/// Scratchapixel
+fn refract(v: Vector, normal: Vector, eta: f64) -> Option<Refraction> {
+	let mut n = normal;
+	let n_dot_v = n.dot(v);
+	let mut cosv = n_dot_v.clamp(1.0, 1.0);
+	let mut etav = 1.0;
+	let mut etat = eta;
+	if cosv < 0.0 {
+		cosv = -cosv;
+	} else {
+		n = -n;
+		let temp = etav;
+		etav = etat;
+		etat = temp;
+	}
+	let eta = etav / etat;
+	let k = 1.0 - eta * eta * (1.0 - cosv * cosv);
+	if k < 0.0 {
+		None
+	} else {
+		let R = f64::powi((etav - etat) / (etav + etat), 2);
+		let wi = v * eta + n * (eta * cosv - f64::sqrt(k));
+		Some(Refraction {
+			wi,
+			R,
+			eta,
+		})
 	}
 }
 
