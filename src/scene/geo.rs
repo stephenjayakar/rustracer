@@ -1,6 +1,6 @@
 extern crate nalgebra as na;
 
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Mul, Neg, Sub};
 use std::f64::consts::PI;
 
 use na::base::{Matrix3, Vector3};
@@ -205,5 +205,13 @@ impl Mul<f64> for Vector {
 	type Output = Vector;
     fn mul(self, other: f64) -> Vector {
         Vector::new_from_na(self.v * other)
+    }
+}
+
+impl Neg for Vector {
+    type Output = Vector;
+
+    fn neg(self) -> Self::Output {
+		Vector::new_from_na(-self.v)
     }
 }
