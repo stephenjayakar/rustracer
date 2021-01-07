@@ -176,7 +176,7 @@ impl Object {
 							let pdf = 1.0 - R;
 							let inv_cos_theta = 1.0 / f64::abs(wi.dot(normal));
 							let reflected = material.reflectance * (inv_cos_theta) * f64::powi(eta, 2);
-							println!("biasing inside");
+							// println!("biasing inside");
 							// bias the intersection point inside
 							let intersection_point = intersection_point - normal * EPS;
 							BSDFSample {
@@ -323,7 +323,7 @@ impl Sphere {
 		let t0 = adj - thc;
 		let t1 = adj + thc;
 
-		println!("{}, {}", t0, t1);
+		// println!("{}, {}", t0, t1);
 		let mut t = t0;
 		if t > t1 {
 			t = t1;
