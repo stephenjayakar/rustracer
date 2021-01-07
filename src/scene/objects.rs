@@ -160,7 +160,7 @@ struct Refraction {
 fn refract(v: Vector, normal: Vector, eta: f64) -> Option<Refraction> {
     let mut n = normal;
     let n_dot_v = n.dot(v);
-    let mut cosv = n_dot_v.clamp(1.0, 1.0);
+    let mut cosv = n_dot_v.clamp(-1.0, 1.0);
     let mut etav = 1.0;
     let mut etat = eta;
     if cosv < 0.0 {
