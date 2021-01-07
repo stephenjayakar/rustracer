@@ -34,51 +34,8 @@ impl Object {
 	/// Returns distance if intersection occurs.
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
 		match self {
-		    Object::Triangle(triangle) => {
-				let e1 = triangle.p2 - triangle.p1;
-				let e2 = triangle.p3 - triangle.p1;
-				let h = ray.direction.cross(e2);
-				let a = e1.dot(h);
-				if f64::abs(a) < EPS {
-					return None;
-				}
-				let f = 1.0 / a;
-				let s = ray.origin - triangle.p1;
-				let u = f * s.dot(h);
-				if u < 0.0 || u > 1.0 {
-					return None
-				}
-				let q = s.cross(e1);
-				let v = f * ray.direction.dot(q);
-				if v < 0.0 || u > 1.0 {
-					return None
-				}
-				let t = f * e2.dot(q);
-				if t > EPS {
-					Some(t)
-				} else {
-					None
-				}
-			}
-		    Object::Sphere(sphere) => {
-				let l: Vector = sphere.center - ray.origin;
-				let adj = l.dot(ray.direction);
-				let d2 = l.dot(l) - (adj * adj);
-				let radius2 = sphere.radius * sphere.radius;
-				if d2 > radius2 {
-					return None;
-				}
-				let thc = (radius2 - d2).sqrt();
-				let t0 = adj - thc;
-				let t1 = adj + thc;
-
-				if t0 < 0.0 && t1 < 0.0 {
-					return None;
-				}
-
-				let distance = if t0 < t1 { t0 } else { t1 };
-				Some(distance)
-			}
+		    Object::Triangle(triangle) => triangle.intersect(ray),
+		    Object::Sphere(sphere) => sphere.intersect(ray),
 		}
 	}
 
@@ -341,6 +298,26 @@ impl Sphere {
 		let point = self.center.clone();
 		point + (random_vector * self.radius)
 	}
+
+    pub fn intersect(&self, ray: &Ray) -> Option<f64> {
+	let l: Vector = self.center - ray.origin;
+	let adj = l.dot(ray.direction);
+	let d2 = l.dot(l) - (adj * adj);
+	let radius2 = self.radius * self.radius;
+	if d2 > radius2 {
+	    return None;
+	}
+	let thc = (radius2 - d2).sqrt();
+	let t0 = adj - thc;
+	let t1 = adj + thc;
+
+	if t0 < 0.0 && t1 < 0.0 {
+	    return None;
+	}
+
+	let distance = if t0 < t1 { t0 } else { t1 };
+	Some(distance)
+    }
 }
 
 impl Triangle {
@@ -353,6 +330,33 @@ impl Triangle {
 			node_index: 0,
 		}
 	}
+
+    pub fn intersect(&self, ray: &Ray) -> Option<f64> {
+	let e1 = self.p2 - self.p1;
+	let e2 = self.p3 - self.p1;
+	let h = ray.direction.cross(e2);
+	let a = e1.dot(h);
+	if f64::abs(a) < EPS {
+	    return None;
+	}
+	let f = 1.0 / a;
+	let s = ray.origin - self.p1;
+	let u = f * s.dot(h);
+	if u < 0.0 || u > 1.0 {
+	    return None
+	}
+	let q = s.cross(e1);
+	let v = f * ray.direction.dot(q);
+	if v < 0.0 || u > 1.0 {
+	    return None
+	}
+	let t = f * e2.dot(q);
+	if t > EPS {
+	    Some(t)
+	} else {
+	    None
+	}
+    }
 }
 
 impl Bounded for Sphere {
