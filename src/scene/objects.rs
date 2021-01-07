@@ -43,57 +43,8 @@ impl Object {
 	/// Returns distance if intersection occurs.
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
 		match self {
-		    Object::Triangle(triangle) => {
-				let e1 = triangle.p2 - triangle.p1;
-				let e2 = triangle.p3 - triangle.p1;
-				let h = ray.direction.cross(e2);
-				let a = e1.dot(h);
-				if f64::abs(a) < EPS {
-					return None;
-				}
-				let f = 1.0 / a;
-				let s = ray.origin - triangle.p1;
-				let u = f * s.dot(h);
-				if u < 0.0 || u > 1.0 {
-					return None
-				}
-				let q = s.cross(e1);
-				let v = f * ray.direction.dot(q);
-				if v < 0.0 || u > 1.0 {
-					return None
-				}
-				let t = f * e2.dot(q);
-				if t > EPS {
-					Some(t)
-				} else {
-					None
-				}
-			}
-		    Object::Sphere(sphere) => {
-				let l: Vector = sphere.center - ray.origin;
-				let adj = l.dot(ray.direction);
-				let d2 = l.dot(l) - (adj * adj);
-				let radius2 = sphere.radius * sphere.radius;
-				if d2 > radius2 {
-					return None;
-				}
-				let thc = (radius2 - d2).sqrt();
-				let t0 = adj - thc;
-				let t1 = adj + thc;
-
-				let mut t = t0;
-				if t > t1 {
-					t = t1;
-				}
-				if t < 0.0 {
-					t = t1;
-					if t0 < 0.0 {
-						return None
-					}
-				}
-				println!("{}", t);
-				Some(t)
-			}
+		    Object::Triangle(triangle) => triangle.intersect(ray),
+		    Object::Sphere(sphere) => sphere.intersect(ray),
 		}
 	}
 
@@ -360,6 +311,32 @@ impl Sphere {
         }
     }
 
+	fn intersect(&self, ray: &Ray) -> Option<f64> {
+		let l: Vector = self.center - ray.origin;
+		let adj = l.dot(ray.direction);
+		let d2 = l.dot(l) - (adj * adj);
+		let radius2 = self.radius * self.radius;
+		if d2 > radius2 {
+			return None;
+		}
+		let thc = (radius2 - d2).sqrt();
+		let t0 = adj - thc;
+		let t1 = adj + thc;
+
+		println!("{}, {}", t0, t1);
+		let mut t = t0;
+		if t > t1 {
+			t = t1;
+		}
+		if t < 0.0 {
+			t = t1;
+			if t < 0.0 {
+				return None
+			}
+		}
+		Some(t)
+	}
+
 	fn random_point(&self) -> Point {
 		let random_vector = Vector::random_sphere();
 		let point = self.center.clone();
@@ -375,6 +352,33 @@ impl Triangle {
 			normal,
 			material,
 			node_index: 0,
+		}
+	}
+
+	pub fn intersect(&self, ray: &Ray) -> Option<f64> {
+		let e1 = self.p2 - self.p1;
+		let e2 = self.p3 - self.p1;
+		let h = ray.direction.cross(e2);
+		let a = e1.dot(h);
+		if f64::abs(a) < EPS {
+			return None;
+		}
+		let f = 1.0 / a;
+		let s = ray.origin - self.p1;
+		let u = f * s.dot(h);
+		if u < 0.0 || u > 1.0 {
+			return None
+		}
+		let q = s.cross(e1);
+		let v = f * ray.direction.dot(q);
+		if v < 0.0 || u > 1.0 {
+			return None
+		}
+		let t = f * e2.dot(q);
+		if t > EPS {
+			Some(t)
+		} else {
+			None
 		}
 	}
 }
@@ -418,4 +422,34 @@ impl Bounded for Triangle {
 
 fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
 	bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)
+}
+
+struct ObjectTestSetupVariables {
+	material: Material,
+}
+
+#[cfg(test)]
+mod tests {
+	use super ::*;
+	fn setup() -> ObjectTestSetupVariables {
+		ObjectTestSetupVariables {
+			material: Material::new(BSDF::Diffuse, Spectrum::black(), Spectrum::black())
+		}
+	}
+
+	/// Sphere intersection should only happen with the outside of the sphere.  Therefore, if we start a ray
+	/// from within the sphere and intersection, the intersection point should be close to the surface.
+	#[test]
+	fn test_within_sphere() {
+		let material = setup().material;
+		let center = Point::origin();
+		let radius = 2.0;
+		let sphere = Sphere::new(center, radius, material);
+
+		let p = Point::new(1.0, 1.0, 1.0);
+		let v = Vector::new(1.0, 1.0, 1.0).normalized();
+		let ray = Ray::new(p, v);
+		let distance = sphere.intersect(&ray).expect("The ray should intersect the sphere");
+		assert_eq!(distance, 2.0 - f64::sqrt(3.0));
+	}
 }
