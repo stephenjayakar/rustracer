@@ -38,10 +38,11 @@ impl<'a> RayIntersection<'a> {
         let min_dist = self.distance();
 		let ray = self.ray();
         let scaled_vector = ray.direction * min_dist;
-        let intersection_point = ray.origin + scaled_vector;
+            let intersection_point = ray.origin + scaled_vector;
+	    intersection_point
         // bumping the point a little out of the object to prevent self-collision
-        let surface_normal: Vector = self.object.surface_normal(intersection_point);
-        intersection_point + (surface_normal * EPS)
+        // let surface_normal: Vector = self.object.surface_normal(intersection_point);
+        // intersection_point + (surface_normal * EPS)
 	}
 }
 

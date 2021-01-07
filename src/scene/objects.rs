@@ -209,6 +209,7 @@ impl BHShape for Object {
     }
 }
 
+#[derive(Debug)]
 pub struct Sphere {
     center: Point,
     radius: f64,
@@ -216,6 +217,7 @@ pub struct Sphere {
     node_index: usize,
 }
 
+#[derive(Debug)]
 pub struct Triangle {
     p1: Point,
     p2: Point,
@@ -269,17 +271,19 @@ impl Sphere {
         let t0 = adj - thc;
         let t1 = adj + thc;
 
-        // println!("{}, {}", t0, t1);
         let mut t = t0;
         if t > t1 {
             t = t1;
         }
-        if t < 0.0 {
+        if t < 0.0 + EPS {
             t = t1;
             if t < 0.0 {
                 return None;
             }
         }
+	// if t < 0.1 {
+	//     println!("{:#?} {:#?} {} {} ldotl: {}", self, ray, t0, t1, l.dot(l));
+	// }
         Some(t)
     }
 }
