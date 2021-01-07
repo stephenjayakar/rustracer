@@ -41,8 +41,8 @@ impl Object {
 
     pub fn surface_normal(&self, point: Point) -> Vector {
         match self {
-            Object::Triangle(triangle) => triangle.normal,
-            Object::Sphere(sphere) => (point - sphere.center).normalized(),
+            Object::Triangle(triangle) => triangle.surface_normal(),
+            Object::Sphere(sphere) => sphere.surface_normal(point),
         }
     }
 
@@ -259,6 +259,10 @@ impl Sphere {
         point + (random_vector * self.radius)
     }
 
+    fn surface_normal(&self, point: Point) -> Vector {
+	(point - self.center).normalized()
+    }
+
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
         let l: Vector = self.center - ray.origin;
         let adj = l.dot(ray.direction);
@@ -327,6 +331,8 @@ impl Triangle {
             None
         }
     }
+
+    fn surface_normal(&self) -> Vector { self.normal }
 }
 
 impl Bounded for Sphere {
