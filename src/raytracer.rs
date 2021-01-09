@@ -212,21 +212,6 @@ impl Raytracer {
 		}
 	}
 
-	fn draw_axis(&self) {
-		let (start_x, start_y) = (10, 10);
-		let length = 15;
-		let x_axis_color = Spectrum::red();
-		let y_axis_color = Spectrum::green();
-
-		for j in 0..length {
-			self.canvas.draw_pixel(start_x, start_y + j, y_axis_color);
-		}
-
-		for i in 0..length {
-			self.canvas.draw_pixel(start_x + i, start_y + length, x_axis_color);
-		}
-	}
-
     pub fn start(&self) {
 		let start = Instant::now();
 		if !self.config.debug {
@@ -236,7 +221,6 @@ impl Raytracer {
 		}
 		let duration = start.elapsed();
 		println!("Rendering took: {:?}", duration);
-	self.draw_axis();
 	self.canvas.start();
     }
 
