@@ -236,8 +236,8 @@ impl Raytracer {
 		}
 		let duration = start.elapsed();
 		println!("Rendering took: {:?}", duration);
-		self.draw_axis();
-        self.canvas.start();
+	self.draw_axis();
+	self.canvas.start();
     }
 
 	/// Helpful function to test a pixel's behavior.  Use this in combination

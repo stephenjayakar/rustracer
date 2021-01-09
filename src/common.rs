@@ -1,3 +1,4 @@
+#[cfg(feature="gui")]
 extern crate sdl2;
 
 use std::ops::{Add, AddAssign, Mul};
@@ -14,6 +15,7 @@ pub struct Spectrum {
 }
 
 impl Spectrum {
+    #[cfg(feature="gui")]
     pub fn to_sdl2_color(&self) -> sdl2::pixels::Color {
         sdl2::pixels::Color::RGB(self.r(), self.g(), self.b())
     }

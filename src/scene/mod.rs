@@ -1,5 +1,3 @@
-extern crate sdl2;
-
 use bvh::bvh::BVH;
 
 mod geo;

@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 #![feature(const_fn)]
 
-extern crate sdl2;
-
 use clap::{Arg, App};
 
 mod canvas;

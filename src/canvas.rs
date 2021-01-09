@@ -1,7 +1,12 @@
+#[cfg(feature="gui")]
 extern crate sdl2;
+#[cfg(feature="gui")]
 use sdl2::event::Event;
+#[cfg(feature="gui")]
 use sdl2::keyboard::Keycode;
+#[cfg(feature="gui")]
 use sdl2::pixels::Color;
+#[cfg(feature="gui")]
 use sdl2::rect::Rect;
 
 extern crate crossbeam_channel;
@@ -45,26 +50,62 @@ impl Canvas {
         }
     }
 
-	/// Saves the canvas to a png file.  The filename is the '{current UNIX timestamp}.png'.
-	fn save_canvas(&self, canvas: &sdl2::render::Canvas<sdl2::video::Window>) {
-		let pixels = canvas.read_pixels(None, sdl2::pixels::PixelFormatEnum::RGB24)
-			.expect("Failed to read pixels from canvas");
-		let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-		let path_string = format!("./dump/{}.png", timestamp.as_secs().to_string());
-		println!("Saving with filename {}", path_string);
-		let path = Path::new(&path_string);
-		let file = File::create(path).unwrap();
-		let ref mut w = BufWriter::new(file);
+    fn new_png_writer(&self) -> png::Writer<BufWriter<File>> {
+	let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+	let path_string = format!("./dump/{}.png", timestamp.as_secs().to_string());
+	println!("Saving with filename {}", path_string);
+	let path = Path::new(&path_string);
+	let file = File::create(path).unwrap();
+	let w = BufWriter::new(file);
 
-		let mut encoder = png::Encoder::new(w, self.width, self.height);
-		encoder.set_color(png::ColorType::RGB);
-		encoder.set_depth(png::BitDepth::Eight);
-		let mut writer = encoder.write_header().unwrap();
+	let mut encoder = png::Encoder::new(w, self.width, self.height);
+	encoder.set_color(png::ColorType::RGB);
+	encoder.set_depth(png::BitDepth::Eight);
+	let writer = encoder.write_header().unwrap();
+	writer
+    }
+
+    #[cfg(feature="gui")]
+	/// Saves the canvas to a png file.  The filename is the '{current UNIX timestamp}.png'.
+	fn save_canvas_gui(&self, canvas: &sdl2::render::Canvas<sdl2::video::Window>) {
+		let pixels = canvas.read_pixels(None, sdl2::pixels::PixelFormatEnum::RGB24)
+		.expect("Failed to read pixels from canvas");
+	    let mut writer = self.new_png_writer();
 		writer.write_image_data(&pixels).expect("Failed to write canvas to png");
 	}
 
-    /// Starts a new canvas context that takes over the main thread.
+    fn save_canvas(&self) {
+	let (w, h) = (self.width as usize, self.height as usize);
+	let buffer_size = w * h * 3;
+	// TODO: we could use this buffer again :P
+	let mut pixels: Vec<u8> = vec![0; buffer_size];
+	for dpm in self.receiver.try_iter() {
+	    let (x, y, s) = (
+		dpm.x as usize,
+		dpm.y as usize,
+		dpm.s,
+	    );
+	    let index = ((y * w) + x) * 3;
+	    pixels[index] = s.r();
+	    pixels[index + 1] = s.g();
+	    pixels[index + 2] = s.b();
+	}
+	let mut writer = self.new_png_writer();
+	writer.write_image_data(&pixels).expect("Failed to write canvas to png");
+    }
+
     pub fn start(&self) {
+	if cfg!(feature="gui") {
+	    #[cfg(feature="gui")]
+	    self.start_gui();
+	} else {
+	    return self.save_canvas();
+	}
+    }
+
+    #[cfg(feature="gui")]
+    /// Starts a new canvas context that takes over the main thread.
+    pub fn start_gui(&self) {
         let sdl_context = sdl2::init().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
@@ -98,7 +139,7 @@ impl Canvas {
                 .expect("failed to draw rectangle");
         }
 		if self.image_mode {
-			self.save_canvas(&canvas);
+			self.save_canvas_gui(&canvas);
 			return;
 		} else {
 			canvas.present();
