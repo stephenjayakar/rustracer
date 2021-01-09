@@ -79,6 +79,42 @@ impl Scene {
 		Scene { objects, bvh, light_indexes }
     }
 
+    pub fn new_teapot() -> Scene {
+	let (models, _) = tobj::load_obj("obj/teapot.obj", true).unwrap();
+	for (i, m) in models.iter().enumerate() {
+            let mesh = &m.mesh;
+            println!("model[{}].name = \'{}\'", i, m.name);
+            println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
+
+            println!(
+		"Size of model[{}].num_face_indices: {}",
+		i,
+		mesh.num_face_indices.len()
+            );
+            let mut next_face = 0;
+            for f in 0..mesh.num_face_indices.len() {
+		let end = next_face + mesh.num_face_indices[f] as usize;
+		let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
+		println!("    face[{}] = {:?}", f, face_indices);
+		next_face = end;
+            }
+
+            // Normals and texture coordinates are also loaded, but not printed in this example
+            println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
+            assert!(mesh.positions.len() % 3 == 0);
+            for v in 0..mesh.positions.len() / 3 {
+		println!(
+                    "    v[{}] = ({}, {}, {})",
+                    v,
+                    mesh.positions[3 * v],
+                    mesh.positions[3 * v + 1],
+                    mesh.positions[3 * v + 2]
+		);
+            }
+	}
+	unimplemented!()
+    }
+
 	fn cornell_box() -> CornellBox {
 		let half_length = 20.0;
 		let box_z_offset = -48.0;
