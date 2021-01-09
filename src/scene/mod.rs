@@ -119,7 +119,7 @@ impl Scene {
     }
 
     pub fn new_teapot() -> Scene {
-		let triangles = Scene::load_teapot(0.1, Point::new(0.0, 0.0, -20.0));
+		let triangles = Scene::load_teapot(0.2, Point::new(0.0, 0.0, -40.0));
 		Scene::new(triangles, Vec::new())
     }
 
