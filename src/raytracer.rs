@@ -21,7 +21,7 @@ impl Raytracer {
         Raytracer {
             config,
             canvas,
-            scene: Scene::new_specular(),
+            scene: Scene::new_teapot(),
         }
     }
 
