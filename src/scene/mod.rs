@@ -79,40 +79,48 @@ impl Scene {
 		Scene { objects, bvh, light_indexes }
     }
 
-    pub fn new_teapot() -> Scene {
-	let (models, _) = tobj::load_obj("obj/teapot.obj", true).unwrap();
-	for (i, m) in models.iter().enumerate() {
-            let mesh = &m.mesh;
-            println!("model[{}].name = \'{}\'", i, m.name);
-            println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
-
-            println!(
-		"Size of model[{}].num_face_indices: {}",
-		i,
-		mesh.num_face_indices.len()
-            );
-            let mut next_face = 0;
-            for f in 0..mesh.num_face_indices.len() {
-		let end = next_face + mesh.num_face_indices[f] as usize;
-		let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
-		println!("    face[{}] = {:?}", f, face_indices);
-		next_face = end;
-            }
-
-            // Normals and texture coordinates are also loaded, but not printed in this example
-            println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
-            assert!(mesh.positions.len() % 3 == 0);
-            for v in 0..mesh.positions.len() / 3 {
-		println!(
-                    "    v[{}] = ({}, {}, {})",
-                    v,
-                    mesh.positions[3 * v],
-                    mesh.positions[3 * v + 1],
-                    mesh.positions[3 * v + 2]
+    fn load_teapot(scale: f64, offset: Point) -> Vec<Triangle> {
+		let (models, _) = tobj::load_obj("obj/teapot.obj", true).unwrap();
+		let m = &models[0];
+		let mesh = &m.mesh;
+		let material = Material::new(
+			BSDF::Diffuse,
+			Spectrum::grey(),
+			Spectrum::black(),
 		);
-            }
-	}
-	unimplemented!()
+
+		let points: Vec<Point> = (0..mesh.positions.len() / 3).map(|v| {
+			// scale
+			let v = Vector::new(
+                mesh.positions[3 * v].into(),
+                mesh.positions[3 * v + 1].into(),
+                mesh.positions[3 * v + 2].into(),
+			);
+			offset + (v * scale)
+			// TODO: offset
+		}).collect();
+
+		let mut triangles = Vec::new();
+		let mut next_face = 0;
+		for f in 0..mesh.num_face_indices.len() {
+			let end = next_face + mesh.num_face_indices[f] as usize;
+			let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
+
+			let triangle = Triangle::new(
+				points[*face_indices[0] as usize],
+				points[*face_indices[1] as usize],
+				points[*face_indices[2] as usize],
+				material,
+			);
+			triangles.push(triangle);
+			next_face = end
+		}
+		triangles
+    }
+
+    pub fn new_teapot() -> Scene {
+		let triangles = Scene::load_teapot(0.1, Point::new(0.0, 0.0, -20.0));
+		Scene::new(triangles, Vec::new())
     }
 
 	fn cornell_box() -> CornellBox {
@@ -233,19 +241,6 @@ impl Scene {
 				p11,
 				blue_diffuse_material,
 			),
-			// wall behind camera
-			// Triangle::new(
-			// 	p12,
-			// 	p13,
-			// 	p0,
-			// 	grey_diffuse_material,
-			// ),
-			// Triangle::new(
-			// 	p3,
-			// 	p0,
-			// 	p13,
-			// 	grey_diffuse_material,
-			// ),
 		];
 
 		CornellBox {
