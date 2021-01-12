@@ -243,9 +243,9 @@ impl Scene {
 				red_diffuse_material,
 			),
 			Triangle::new(
-				p9,
-				p8,
 				p1,
+				p9,
+				p0,
 				red_diffuse_material,
 			),
 			// right wall
