@@ -33,31 +33,40 @@ impl Object {
 	/// Returns distance if intersection occurs.
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
 		match self {
+			/// Scratchapixel's triangle intersection algorithm.
 		    Object::Triangle(triangle) => {
-				let e1 = triangle.p2 - triangle.p1;
-				let e2 = triangle.p3 - triangle.p1;
-				let h = ray.direction.cross(e2);
-				let a = e1.dot(h);
-				if f64::abs(a) < EPS {
-					return None;
-				}
-				let f = 1.0 / a;
-				let s = ray.origin - triangle.p1;
-				let u = f * s.dot(h);
-				if u < 0.0 || u > 1.0 {
-					return None
-				}
-				let q = s.cross(e1);
-				let v = f * ray.direction.dot(q);
-				if v < 0.0 || u > 1.0 {
-					return None
-				}
-				let t = f * e2.dot(q);
-				if t > EPS {
-					Some(t)
-				} else {
-					None
-				}
+				let v0 = Vector::new(triangle.p1.x(), triangle.p1.y(), triangle.p1.z());
+				let v1 = Vector::new(triangle.p2.x(), triangle.p2.y(), triangle.p2.z());
+				let v2 = Vector::new(triangle.p3.x(), triangle.p3.y(), triangle.p3.z());
+				let orig = Vector::new(ray.origin.x(), ray.origin.y(), ray.origin.z());
+				let n = triangle.normal;
+				let n_dot_ray = n.dot(ray.direction);
+
+				if f64::abs(n_dot_ray) < EPS { return None }
+
+				let d = n.dot(v0);
+
+				let t = n.dot(orig) + d / n_dot_ray;
+				if t < 0.0 { return None }
+
+				let p = orig + ray.direction * t;
+
+				let edge0 = v1 - v0;
+				let vp0 = p - v0;
+				let c = edge0.cross(vp0);
+				if n.dot(c) < 0.0 { return None }
+
+				let edge1 = v2 - v1;
+				let vp1 = p - v1;
+				let c = edge1.cross(vp1);
+				if n.dot(c) < 0.0 { return None }
+
+				let edge2 = v0 - v2;
+				let vp2 = p - v2;
+				let c = edge2.cross(vp2);
+				if n.dot(c) < 0.0 { return None }
+
+				Some(t)
 			}
 		    Object::Sphere(sphere) => {
 				let l: Vector = sphere.center - ray.origin;

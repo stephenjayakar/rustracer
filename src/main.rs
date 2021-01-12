@@ -9,7 +9,7 @@ mod raytracer;
 mod scene;
 
 use raytracer::Raytracer;
-use scene::Point;
+use scene::{Point, Scene};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 600;
 const DEFAULT_SCREEN_HEIGHT: u32 = 600;
@@ -105,7 +105,7 @@ fn main() {
     // parse args
 	let config = Config::from_args();
 
-    let raytracer = Raytracer::new(config);
-	// raytracer.test();
+    let raytracer = Raytracer::new(config, Scene::new_diffuse());
+//	raytracer.test(558, 223);
     raytracer.start();
 }
