@@ -16,14 +16,14 @@ pub struct Raytracer {
 }
 
 impl Raytracer {
-    pub fn new(config: Config) -> Raytracer {
+	pub fn new(config: Config, scene: Scene) -> Raytracer {
         let canvas = Canvas::new(config.screen_width, config.screen_height, config.high_dpi, config.image_mode);
         Raytracer {
             config,
             canvas,
-            scene: Scene::new_teapot(),
+            scene,
         }
-    }
+	}
 
     /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
     /// `Spectrum` value to the `Canvas`.
@@ -226,9 +226,7 @@ impl Raytracer {
 
 	/// Helpful function to test a pixel's behavior.  Use this in combination
 	/// with the mouse_down pixel print implemented
-	fn test(&self) {
-		let i = 1189;//227;
-		let j = 855;//312;
-		println!("{:?}", self.render_helper(i, j));
+	pub fn test(&self, i: u32, j: u32) {
+		println!("{:?}", self.debug_render_helper(i, j));
 	}
 }

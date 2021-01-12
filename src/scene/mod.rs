@@ -79,6 +79,25 @@ impl Scene {
 		Scene { objects, bvh, light_indexes }
     }
 
+	pub fn new_triangle() -> Scene {
+		let material = Material::new(
+			BSDF::Diffuse,
+			Spectrum::green(),
+			Spectrum::black(),
+		);
+
+		let (p1, p2, p3) = (Point::new(-5.0, 0.0, -20.0),
+							Point::new(5.0, 0.0, -20.0),
+							Point::new(5.0, 5.0, -20.0));
+
+		let triangle = Triangle::new(
+			p1, p2, p3,
+			material,
+		);
+
+		Scene::new(vec![triangle], vec![])
+	}
+
     fn load_teapot(scale: f64, offset: Point) -> Vec<Triangle> {
 		let (models, _) = tobj::load_obj("obj/teapot.obj", true).unwrap();
 		let m = &models[0];
@@ -97,7 +116,6 @@ impl Scene {
                 mesh.positions[3 * v + 2].into(),
 			);
 			offset + (v * scale)
-			// TODO: offset
 		}).collect();
 
 		let mut triangles = Vec::new();
@@ -106,10 +124,12 @@ impl Scene {
 			let end = next_face + mesh.num_face_indices[f] as usize;
 			let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
 
+			let (p1, p2, p3) = (points[*face_indices[0] as usize],
+								points[*face_indices[1] as usize],
+								points[*face_indices[2] as usize]);
+
 			let triangle = Triangle::new(
-				points[*face_indices[0] as usize],
-				points[*face_indices[1] as usize],
-				points[*face_indices[2] as usize],
+				p1, p2, p3,
 				material,
 			);
 			triangles.push(triangle);
