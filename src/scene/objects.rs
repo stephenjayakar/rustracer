@@ -33,40 +33,10 @@ impl Object {
 	/// Returns distance if intersection occurs.
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
 		match self {
-			/// Scratchapixel's triangle intersection algorithm.
 		    Object::Triangle(triangle) => {
-				let v0 = Vector::new(triangle.p1.x(), triangle.p1.y(), triangle.p1.z());
-				let v1 = Vector::new(triangle.p2.x(), triangle.p2.y(), triangle.p2.z());
-				let v2 = Vector::new(triangle.p3.x(), triangle.p3.y(), triangle.p3.z());
-				let orig = Vector::new(ray.origin.x(), ray.origin.y(), ray.origin.z());
-				let n = triangle.normal;
-				let n_dot_ray = n.dot(ray.direction);
-
-				if f64::abs(n_dot_ray) < EPS { return None }
-
-				let d = n.dot(v0);
-
-				let t = n.dot(orig) + d / n_dot_ray;
-				if t < 0.0 { return None }
-
-				let p = orig + ray.direction * t;
-
-				let edge0 = v1 - v0;
-				let vp0 = p - v0;
-				let c = edge0.cross(vp0);
-				if n.dot(c) < 0.0 { return None }
-
-				let edge1 = v2 - v1;
-				let vp1 = p - v1;
-				let c = edge1.cross(vp1);
-				if n.dot(c) < 0.0 { return None }
-
-				let edge2 = v0 - v2;
-				let vp2 = p - v2;
-				let c = edge2.cross(vp2);
-				if n.dot(c) < 0.0 { return None }
-
-				Some(t)
+				let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
+				let e1 = p2 - p1;
+				// finish copying this lol https://www.dropbox.com/personal/School/cSophomore/cs184/proj3_1-pathtracer-stephenjayakar/src/static_scene?preview=triangle.cpp
 			}
 		    Object::Sphere(sphere) => {
 				let l: Vector = sphere.center - ray.origin;
