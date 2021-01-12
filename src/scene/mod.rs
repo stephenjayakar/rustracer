@@ -139,8 +139,28 @@ impl Scene {
     }
 
     pub fn new_teapot() -> Scene {
-		let triangles = Scene::load_teapot(0.2, Point::new(0.0, 0.0, -40.0));
-		Scene::new(triangles, Vec::new())
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 red_diffuse_material,
+			 mut triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let teapot_scale = 0.15;
+		triangles.extend(Scene::load_teapot(teapot_scale, Point::new(
+			-half_length / 3.0,
+			0.0,
+			box_z_offset - 2.0 * half_length / 3.0)));
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+		];
+
+		Scene::new(triangles, spheres)
     }
 
 	fn cornell_box() -> CornellBox {
