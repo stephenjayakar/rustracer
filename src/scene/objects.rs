@@ -35,18 +35,20 @@ impl Object {
 		match self {
 		    Object::Triangle(triangle) => {
 				let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
+				let direction = ray.direction.normalized();
 				let e1 = p2 - p1;
 				let e2 = p3 - p1;
 				let s = ray.origin - p1;
-				let s1 = ray.direction.cross(e2);
+				let s1 = direction.cross(e2);
 				let s2 = s.cross(e1);
 				let scalar = 1.0 / s1.dot(e1);
 				let (t, b1, b2) = (
 					s2.dot(e2) * scalar,
 					s1.dot(s) * scalar,
-					s2.dot(ray.direction) * scalar,
+					s2.dot(direction) * scalar,
 				);
-				return if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 {
+				// Figure out why the last term is 2.0 despite the algorithm I copied saying 1.0
+				return if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 + EPS {
 					None
 				} else {
 					Some(t)
