@@ -36,7 +36,22 @@ impl Object {
 		    Object::Triangle(triangle) => {
 				let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
 				let e1 = p2 - p1;
-				// finish copying this lol https://www.dropbox.com/personal/School/cSophomore/cs184/proj3_1-pathtracer-stephenjayakar/src/static_scene?preview=triangle.cpp
+				let e2 = p3 - p1;
+				let s = ray.origin - p1;
+				let s1 = ray.direction.cross(e2);
+				let s2 = s.cross(e1);
+				let scalar = 1.0 / s1.dot(e1);
+				let (t, b1, b2) = (
+					s2.dot(e2) * scalar,
+					s1.dot(s) * scalar,
+					s2.dot(ray.direction) * scalar,
+				);
+				return if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 {
+					None
+				} else {
+					Some(t)
+				}
+				// possibly return normal?
 			}
 		    Object::Sphere(sphere) => {
 				let l: Vector = sphere.center - ray.origin;
