@@ -157,7 +157,7 @@ impl Canvas {
                     } => break 'running,
 					Event::MouseButtonDown {
 						x, y, ..
-					} => println!("Mouse button down at coordinates ({}, {})", x, y),
+					} => println!("Mouse button down at coordinates ({}, {})", x * divider as i32, y * divider as i32),
                     _ => {},
                 }
             }
