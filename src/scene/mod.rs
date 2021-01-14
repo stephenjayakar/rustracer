@@ -92,7 +92,7 @@ impl Scene {
 							Point::new(5.0, 0.0, -20.0),
 							Point::new(5.0, 5.0, -20.0));
 
-		let triangle = Triangle::new(
+		let triangle = Triangle::new_without_vn(
 			p1, p2, p3,
 			material,
 		);
@@ -111,7 +111,6 @@ impl Scene {
 		);
 
 		let points: Vec<Point> = (0..mesh.positions.len() / 3).map(|v| {
-			// scale
 			let v = Vector::new(
                 mesh.positions[3 * v].into(),
                 mesh.positions[3 * v + 1].into(),
@@ -119,6 +118,18 @@ impl Scene {
 			);
 			offset + (v * scale)
 		}).collect();
+		let vn: Option<Vec<Vector>> = if !mesh.normals.is_empty() {
+			Some((0..mesh.positions.len() / 3).map(|i| {
+				let v = Vector::new(
+					mesh.normals[3 * i].into(),
+					mesh.normals[3 * i + 1].into(),
+					mesh.normals[3 * i + 2].into(),
+				);
+				v
+			}).collect())
+		} else {
+			None
+		};
 
 		let mut triangles = Vec::new();
 		let mut next_face = 0;
@@ -126,15 +137,30 @@ impl Scene {
 			let end = next_face + mesh.num_face_indices[f] as usize;
 			let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
 
-			let (p1, p2, p3) = (points[*face_indices[0] as usize],
-								points[*face_indices[1] as usize],
-								points[*face_indices[2] as usize]);
+			let (i1, i2, i3) = (*face_indices[0] as usize,
+								*face_indices[1] as usize,
+								*face_indices[2] as usize);
+			let (p1, p2, p3) = (points[i1],
+								points[i2],
+								points[i3]);
 
-			let triangle = Triangle::new(
-				p1, p2, p3,
-				material,
-			);
-			triangles.push(triangle);
+			triangles.push(if let Some(ref vn) = vn {
+				let (vn1, vn2, vn3) = (vn[i1],
+									   vn[i2],
+									   vn[i3]);
+				Triangle::new(
+					p1, p2, p3,
+					vn1, vn2, vn3,
+					material,
+				)
+			} else {
+				Triangle::new_without_vn(
+					p1, p2, p3,
+					material,
+				)
+			});
+
+
 			next_face = end
 		}
 		triangles
@@ -219,65 +245,65 @@ impl Scene {
 
         let triangles = vec![
 			// bottom wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p1,
 				p0,
 				p2,
 				grey_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p3,
 				p2,
 				p0,
 				grey_diffuse_material,
 			),
 			// top wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p4,
 				p5,
 				p6,
 				grey_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p7,
 				p6,
 				p5,
 				grey_diffuse_material,
 			),
 			// back wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p4,
 				p1,
 				p2,
 				green_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p2,
 				p5,
 				p4,
 				green_diffuse_material,
 			),
 			// left wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p8,
 				p0,
 				p9,
 				red_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p1,
 				p9,
 				p0,
 				red_diffuse_material,
 			),
 			// right wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p3,
 				p11,
 				p2,
 				blue_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p10,
 				p2,
 				p11,

@@ -52,7 +52,6 @@ impl Object {
 				} else {
 					Some(t)
 				}
-				// possibly return normal?
 			}
 		    Object::Sphere(sphere) => {
 				let l: Vector = sphere.center - ray.origin;
@@ -79,7 +78,9 @@ impl Object {
     pub fn surface_normal(&self, point: Point) -> Vector {
 		match self {
 			Object::Triangle(triangle) => {
-				triangle.normal
+				let b = triangle.barycentric_coordinates(point);
+				let (u, v, w) = (b.u, b.v, b.w);
+				triangle.vn1 * u + triangle.vn2 * v + triangle.vn3 * w
 			},
 			Object::Sphere(sphere) => {
 				(point - sphere.center).normalized()
@@ -207,7 +208,10 @@ pub struct Triangle {
 	p1: Point,
 	p2: Point,
 	p3: Point,
-	normal: Vector,
+	vn1: Vector,
+	vn2: Vector,
+	vn3: Vector,
+	plane_normal: Vector,
     material: Material,
 	node_index: usize,
 }
@@ -245,14 +249,60 @@ impl Sphere {
 	}
 }
 
+struct BarycentricCoordinates {
+	u: f64,
+	v: f64,
+	w: f64,
+}
+
 impl Triangle {
-	pub fn new(p1: Point, p2: Point, p3: Point, material: Material) -> Triangle {
-		let normal = ((p2 - p1).cross(p3 - p1)).normalized();
+	pub fn new(p1: Point,
+			   p2: Point,
+			   p3: Point,
+			   vn1: Vector,
+			   vn2: Vector,
+			   vn3: Vector,
+			   material: Material) -> Triangle {
+		let plane_normal = ((p2 - p1).cross(p3 - p1)).normalized();
 		Triangle {
 			p1, p2, p3,
-			normal,
+			vn1, vn2, vn3,
+			plane_normal,
 			material,
 			node_index: 0,
+		}
+	}
+
+	pub fn new_without_vn(p1: Point,
+						  p2: Point,
+						  p3: Point,
+						  material: Material) -> Triangle {
+		let normal = ((p2 - p1).cross(p3 - p1)).normalized();
+		Triangle::new(
+			p1, p2, p3,
+			normal, normal, normal,
+			material,
+		)
+	}
+
+	fn barycentric_coordinates(&self, p: Point) -> BarycentricCoordinates {
+		// Use barycentric coordinates to interpolate between the
+		// vertex normals. From scratchapixel.
+		let n = self.plane_normal;
+		let denom = n.dot(n);
+		// calculating u
+		let edge1 = self.p2 - self.p1;
+		let vp1 = p - self.p1;
+		let c = edge1.cross(vp1);
+		let u = n.dot(c) / denom;
+		// and then v
+		let edge2 = self.p3 - self.p1;
+		let vp2 = p - self.p2;
+		let c = edge2.cross(vp2);
+		let v = n.dot(c) / denom;
+		let w = 1.0 - u - v;
+		BarycentricCoordinates {
+			u, v, w,
 		}
 	}
 }
