@@ -100,12 +100,12 @@ impl Scene {
 		Scene::new(vec![triangle], vec![])
 	}
 
-    fn load_teapot(scale: f64, offset: Point) -> Vec<Triangle> {
-		let (models, _) = tobj::load_obj("obj/teapot.obj", true).unwrap();
+    fn load_dragon(scale: f64, offset: Point) -> Vec<Triangle> {
+		let (models, _) = tobj::load_obj("obj/dragon.obj", true).unwrap();
 		let m = &models[0];
 		let mesh = &m.mesh;
 		let material = Material::new(
-			BSDF::Diffuse,
+			BSDF::Specular,
 			Spectrum::grey(),
 			Spectrum::black(),
 		);
@@ -118,7 +118,6 @@ impl Scene {
 			);
 			offset + (v * scale)
 		}).collect();
-		println!("{:?}", mesh.normals);
 		let vn: Option<Vec<Vector>> = if !mesh.normals.is_empty() {
 			Some((0..mesh.positions.len() / 3).map(|i| {
 				let v = Vector::new(
@@ -167,17 +166,17 @@ impl Scene {
 		triangles
     }
 
-    pub fn new_teapot() -> Scene {
+    pub fn new_dragon() -> Scene {
 		let cb = Scene::cornell_box();
 		let (half_length,
 			 box_z_offset,
 			 red_diffuse_material,
 			 mut triangles,
 		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
-		let teapot_scale = 0.15;
-		triangles.extend(Scene::load_teapot(teapot_scale, Point::new(
+		let dragon_scale = 2.0;
+		triangles.extend(Scene::load_dragon(dragon_scale, Point::new(
 			-half_length / 3.0,
-			0.0,
+			-half_length,
 			box_z_offset - 2.0 * half_length / 3.0)));
 		let sphere_radius = 6.0;
         let spheres = vec![
