@@ -106,6 +106,6 @@ fn main() {
 	let config = Config::from_args();
 
     let raytracer = Raytracer::new(config, Scene::new_teapot());
-	// raytracer.test(28, 483);
+	// raytracer.test(226, 228);
 	raytracer.start();
 }

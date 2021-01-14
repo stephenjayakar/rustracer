@@ -35,7 +35,7 @@ impl Object {
 		match self {
 		    Object::Triangle(triangle) => {
 				let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
-				let direction = ray.direction.normalized();
+				let direction = ray.direction;
 				let e1 = p2 - p1;
 				let e2 = p3 - p1;
 				let s = ray.origin - p1;
@@ -47,8 +47,7 @@ impl Object {
 					s1.dot(s) * scalar,
 					s2.dot(direction) * scalar,
 				);
-				// Figure out why the last term is 2.0 despite the algorithm I copied saying 1.0
-				return if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 + EPS {
+				return if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 + EPS || t < EPS {
 					None
 				} else {
 					Some(t)

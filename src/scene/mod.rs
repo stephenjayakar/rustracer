@@ -35,13 +35,15 @@ impl<'a> RayIntersection<'a> {
 	}
 
 	pub fn point(&self) -> Point {
-        let min_dist = self.distance();
+		// TODO: did EPS scaling here?
+        let min_dist = self.distance() - EPS;
 		let ray = self.ray();
         let scaled_vector = ray.direction * min_dist;
         let intersection_point = ray.origin + scaled_vector;
+		intersection_point
         // bumping the point a little out of the object to prevent self-collision
-        let surface_normal: Vector = self.object.surface_normal(intersection_point);
-        intersection_point + (surface_normal * EPS)
+        // let surface_normal: Vector = self.object.surface_normal(intersection_point);
+        // intersection_point + (surface_normal * EPS)
 	}
 }
 
@@ -103,8 +105,8 @@ impl Scene {
 		let m = &models[0];
 		let mesh = &m.mesh;
 		let material = Material::new(
-			BSDF::Diffuse,
-			Spectrum::grey(),
+			BSDF::Specular,
+			Spectrum::white(),
 			Spectrum::black(),
 		);
 
