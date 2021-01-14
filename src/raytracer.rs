@@ -227,6 +227,10 @@ impl Raytracer {
 	/// Helpful function to test a pixel's behavior.  Use this in combination
 	/// with the mouse_down pixel print implemented
 	pub fn test(&self, i: u32, j: u32) {
-		println!("{:?}", self.debug_render_helper(i, j));
+		if !self.config.debug {
+			println!("{:?}", self.render_helper(i, j));
+		} else {
+			println!("{:?}", self.debug_render_helper(i, j));
+		}
 	}
 }
