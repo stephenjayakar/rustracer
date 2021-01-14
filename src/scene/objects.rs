@@ -263,6 +263,7 @@ impl Triangle {
 			   vn2: Vector,
 			   vn3: Vector,
 			   material: Material) -> Triangle {
+		let (vn1, vn2, vn3) = (vn1.normalized(), vn2.normalized(), vn3.normalized());
 		let plane_normal = ((p2 - p1).cross(p3 - p1)).normalized();
 		Triangle {
 			p1, p2, p3,

@@ -105,8 +105,8 @@ impl Scene {
 		let m = &models[0];
 		let mesh = &m.mesh;
 		let material = Material::new(
-			BSDF::Specular,
-			Spectrum::white(),
+			BSDF::Diffuse,
+			Spectrum::grey(),
 			Spectrum::black(),
 		);
 
@@ -118,6 +118,7 @@ impl Scene {
 			);
 			offset + (v * scale)
 		}).collect();
+		println!("{:?}", mesh.normals);
 		let vn: Option<Vec<Vector>> = if !mesh.normals.is_empty() {
 			Some((0..mesh.positions.len() / 3).map(|i| {
 				let v = Vector::new(
