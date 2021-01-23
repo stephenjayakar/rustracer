@@ -2,9 +2,9 @@
 
 Screenshot | Table?
 ----------------------------------------:|:----------------------------
-![specular](/screenshots/specular.png?raw=true "specular") | ![global illumination](/screenshots/global_illumination.png?raw=true "global illumination")
-![direct lighting importance](/screenshots/direct_lighting_importance.png?raw=true "direct lighting importance") | ![Direct lighting with hemisphere sampling](/screenshots/direct_lighting_hemisphere.png?raw=true "Direct lighting with hemisphere sampling")
-![Lambertian Sphere on top of plane](/screenshots/sphere_on_top_of_plane.png?raw=true "Lambertian Sphere on Plane")
+![dragon](/screenshots/dragon.png?raw=true "dragon") | ![specular](/screenshots/specular.png?raw=true "specular")
+![global illumination](/screenshots/global_illumination.png?raw=true "global illumination") | ![direct lighting importance](/screenshots/direct_lighting_importance.png?raw=true "direct lighting importance")
+![Direct lighting with hemisphere sampling](/screenshots/direct_lighting_hemisphere.png?raw=true "Direct lighting with hemisphere sampling") | ![Lambertian Sphere on top of plane](/screenshots/sphere_on_top_of_plane.png?raw=true "Lambertian Sphere on Plane")
 
 Not a racing program written in rust!
 
