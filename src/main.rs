@@ -114,7 +114,7 @@ fn main() {
     // parse args
 	let config = Config::from_args();
 
-    let raytracer = Raytracer::new(config, Scene::new_triangle());
+    let raytracer = Raytracer::new(config, Scene::new_dragon());
 	// raytracer.test(362, 371);
 	raytracer.start();
 }

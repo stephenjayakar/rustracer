@@ -289,22 +289,21 @@ impl Triangle {
 	}
 
 	fn barycentric_coordinates(&self, p: Point) -> BarycentricCoordinates {
-		// Use barycentric coordinates to interpolate between the
-		// vertex normals. From scratchapixel.
-		let n = self.plane_normal_not_normalized;
-		let denom = n.dot(n);
+		/* https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
+		 */
+		let v0 = self.p2 - self.p1;
+		let v1 = self.p3 - self.p1;
+		let v2 = p - self.p1;
+		let d00 = v0.dot(v0);
+		let d01 = v0.dot(v1);
+		let d11 = v1.dot(v1);
+		let d20 = v2.dot(v0);
+		let d21 = v2.dot(v1);
+		let denom = d00 * d11 - d01 * d01;
 
-		// calculating u
-		let edge1 = self.p2 - self.p1;
-		let vp1 = p - self.p1;
-		let c = edge1.cross(vp1);
-		let u = n.dot(c) / denom;
-		// and then v
-		let edge2 = self.p3 - self.p1;
-		let vp2 = p - self.p2;
-		let c = edge2.cross(vp2);
-		let v = n.dot(c) / denom;
-		let w = 1.0 - u - v;
+		let v = (d11 * d20 - d01 * d21) / denom;
+		let w = (d00 * d21 - d01 * d20) / denom;
+		let u = 1.0 - v - w;
 		BarycentricCoordinates {
 			u, v, w,
 		}
@@ -314,7 +313,6 @@ impl Triangle {
 		let b = self.barycentric_coordinates(point);
 		let (u, v, w) = (b.u, b.v, b.w);
 		let normal = self.vn1 * u + self.vn2 * v + self.vn3 * w;
-		dp!(u, v, w, normal);
 		normal
 	}
 }

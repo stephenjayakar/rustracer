@@ -194,9 +194,9 @@ impl Scene {
 		let sphere_radius = 6.0;
         let spheres = vec![
 			cb.sphere_light,
-			Sphere::new(Point::new(half_length / 3.0,
+			Sphere::new(Point::new(half_length / 3.0 + 2.0,
 								   -half_length + sphere_radius,
-								   box_z_offset - half_length / 3.0),
+								   box_z_offset - half_length / 3.0 + 2.0),
 						sphere_radius,
 						red_diffuse_material),
 		];
@@ -212,15 +212,15 @@ impl Scene {
 			 mut triangles,
 		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
 		let material = Material::new(
-			BSDF::Specular,
-			Spectrum::white(),
+			BSDF::Diffuse,
+			Spectrum::grey(),
 			Spectrum::black(),
 		);
-		let teapot_scale = 0.15;
+		let teapot_scale = 0.13;
 		triangles.extend(Scene::load_obj("obj/teapot.obj", teapot_scale, Point::new(
-			-half_length / 3.0,
-			0.0,
-			box_z_offset - 2.0 * half_length / 3.0), material));
+			-half_length / 3.0 - 2.0,
+			-15.0,
+			box_z_offset - 2.5 * half_length / 3.0), material));
 		let sphere_radius = 6.0;
         let spheres = vec![
 			cb.sphere_light,
