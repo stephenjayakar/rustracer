@@ -1,6 +1,15 @@
 #![allow(dead_code)]
 #![feature(const_fn)]
 
+// Quick macro to print out comma separated values. Used for debugging.
+macro_rules! dp {
+	($x:expr) => { println!("{}: {}", stringify!($x), $x); };
+	($x:expr, $($y:expr),+) => {
+		print!("{}: {}, ", stringify!($x), $x);
+		dp!($($y),+);
+	};
+}
+
 use clap::{Arg, App};
 
 mod canvas;
@@ -9,7 +18,7 @@ mod raytracer;
 mod scene;
 
 use raytracer::Raytracer;
-use scene::Point;
+use scene::{Point, Scene};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 600;
 const DEFAULT_SCREEN_HEIGHT: u32 = 600;
@@ -105,7 +114,7 @@ fn main() {
     // parse args
 	let config = Config::from_args();
 
-    let raytracer = Raytracer::new(config);
-	// raytracer.test();
-    raytracer.start();
+    let raytracer = Raytracer::new(config, Scene::new_dragon());
+	// raytracer.test(362, 371);
+	raytracer.start();
 }

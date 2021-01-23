@@ -1,5 +1,6 @@
 extern crate nalgebra as na;
 
+use std::fmt;
 use std::ops::{Add, Mul, Sub};
 use std::f64::consts::PI;
 
@@ -54,6 +55,12 @@ impl Point {
     pub fn z(&self) -> f64 {
         self.p[2]
     }
+}
+
+impl fmt::Display for Point {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "p({} {} {})", self.x(), self.y(), self.z())
+	}
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -159,6 +166,12 @@ impl Vector {
     pub fn z(&self) -> f64 {
         self.v[2]
     }
+}
+
+impl fmt::Display for Vector {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "v({} {} {})", self.x(), self.y(), self.z())
+	}
 }
 
 impl Sub for Point {

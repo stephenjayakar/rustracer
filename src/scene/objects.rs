@@ -34,29 +34,23 @@ impl Object {
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
 		match self {
 		    Object::Triangle(triangle) => {
-				let e1 = triangle.p2 - triangle.p1;
-				let e2 = triangle.p3 - triangle.p1;
-				let h = ray.direction.cross(e2);
-				let a = e1.dot(h);
-				if f64::abs(a) < EPS {
-					return None;
-				}
-				let f = 1.0 / a;
-				let s = ray.origin - triangle.p1;
-				let u = f * s.dot(h);
-				if u < 0.0 || u > 1.0 {
-					return None
-				}
-				let q = s.cross(e1);
-				let v = f * ray.direction.dot(q);
-				if v < 0.0 || u > 1.0 {
-					return None
-				}
-				let t = f * e2.dot(q);
-				if t > EPS {
-					Some(t)
-				} else {
+				let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
+				let direction = ray.direction;
+				let e1 = p2 - p1;
+				let e2 = p3 - p1;
+				let s = ray.origin - p1;
+				let s1 = direction.cross(e2);
+				let s2 = s.cross(e1);
+				let scalar = 1.0 / s1.dot(e1);
+				let (t, b1, b2) = (
+					s2.dot(e2) * scalar,
+					s1.dot(s) * scalar,
+					s2.dot(direction) * scalar,
+				);
+				return if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 + EPS || t < EPS {
 					None
+				} else {
+					Some(t)
 				}
 			}
 		    Object::Sphere(sphere) => {
@@ -84,10 +78,10 @@ impl Object {
     pub fn surface_normal(&self, point: Point) -> Vector {
 		match self {
 			Object::Triangle(triangle) => {
-				triangle.normal
+				triangle.surface_normal(point)
 			},
 			Object::Sphere(sphere) => {
-				(point - sphere.center).normalized()
+				sphere.surface_normal(point)
 			}
 		}
 	}
@@ -212,7 +206,10 @@ pub struct Triangle {
 	p1: Point,
 	p2: Point,
 	p3: Point,
-	normal: Vector,
+	vn1: Vector,
+	vn2: Vector,
+	vn3: Vector,
+	plane_normal_not_normalized: Vector,
     material: Material,
 	node_index: usize,
 }
@@ -248,17 +245,75 @@ impl Sphere {
 		let point = self.center.clone();
 		point + (random_vector * self.radius)
 	}
+
+	fn surface_normal(&self, point: Point) -> Vector {
+		(point - self.center).normalized()
+	}
+}
+
+struct BarycentricCoordinates {
+	u: f64,
+	v: f64,
+	w: f64,
 }
 
 impl Triangle {
-	pub fn new(p1: Point, p2: Point, p3: Point, material: Material) -> Triangle {
-		let normal = ((p2 - p1).cross(p3 - p1)).normalized();
+	pub fn new(p1: Point,
+			   p2: Point,
+			   p3: Point,
+			   vn1: Vector,
+			   vn2: Vector,
+			   vn3: Vector,
+			   material: Material) -> Triangle {
+		let (vn1, vn2, vn3) = (vn1.normalized(), vn2.normalized(), vn3.normalized());
+		let plane_normal_not_normalized = (p2 - p1).cross(p3 - p1);
 		Triangle {
 			p1, p2, p3,
-			normal,
+			vn1, vn2, vn3,
+			plane_normal_not_normalized,
 			material,
 			node_index: 0,
 		}
+	}
+
+	pub fn new_without_vn(p1: Point,
+						  p2: Point,
+						  p3: Point,
+						  material: Material) -> Triangle {
+		let normal = (p2 - p1).cross(p3 - p1);
+		Triangle::new(
+			p1, p2, p3,
+			normal, normal, normal,
+			material,
+		)
+	}
+
+	fn barycentric_coordinates(&self, p: Point) -> BarycentricCoordinates {
+		/* https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
+		 */
+		let v0 = self.p2 - self.p1;
+		let v1 = self.p3 - self.p1;
+		let v2 = p - self.p1;
+		let d00 = v0.dot(v0);
+		let d01 = v0.dot(v1);
+		let d11 = v1.dot(v1);
+		let d20 = v2.dot(v0);
+		let d21 = v2.dot(v1);
+		let denom = d00 * d11 - d01 * d01;
+
+		let v = (d11 * d20 - d01 * d21) / denom;
+		let w = (d00 * d21 - d01 * d20) / denom;
+		let u = 1.0 - v - w;
+		BarycentricCoordinates {
+			u, v, w,
+		}
+	}
+
+	fn surface_normal(&self, point: Point) -> Vector {
+		let b = self.barycentric_coordinates(point);
+		let (u, v, w) = (b.u, b.v, b.w);
+		let normal = self.vn1 * u + self.vn2 * v + self.vn3 * w;
+		normal
 	}
 }
 
@@ -301,4 +356,33 @@ impl Bounded for Triangle {
 
 fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
 	bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn debug_triangle_surface_normal() {
+		let material = Material::new(
+			BSDF::Specular,
+			Spectrum::white(),
+			Spectrum::black(),
+		);
+
+		let triangle = Triangle::new(
+			Point::new(-5.0, -5.0, -20.0),
+			Point::new(5.0, -5.0, -20.0),
+			Point::new(5.0, 5.0, -20.0),
+			Vector::new_normalized(-0.4, 0.0, 1.0),
+			Vector::new_normalized(0.4, 0.0, 1.0),
+			Vector::new_normalized(0.0, 0.0, 1.0),
+			material,
+		);
+
+		let ipoint = Point::new(4.173316472713594,
+								3.2582371132481547,
+								-19.999999903330043);
+		triangle.surface_normal(ipoint);
+	}
 }

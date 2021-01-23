@@ -35,13 +35,15 @@ impl<'a> RayIntersection<'a> {
 	}
 
 	pub fn point(&self) -> Point {
-        let min_dist = self.distance();
+		// TODO: did EPS scaling here?
+        let min_dist = self.distance() - EPS;
 		let ray = self.ray();
         let scaled_vector = ray.direction * min_dist;
         let intersection_point = ray.origin + scaled_vector;
+		intersection_point
         // bumping the point a little out of the object to prevent self-collision
-        let surface_normal: Vector = self.object.surface_normal(intersection_point);
-        intersection_point + (surface_normal * EPS)
+        // let surface_normal: Vector = self.object.surface_normal(intersection_point);
+        // intersection_point + (surface_normal * EPS)
 	}
 }
 
@@ -77,6 +79,159 @@ impl Scene {
 		let bvh = BVH::build(&mut objects);
 
 		Scene { objects, bvh, light_indexes }
+    }
+
+	pub fn new_triangle() -> Scene {
+		let material = Material::new(
+			BSDF::Specular,
+			Spectrum::white(),
+			Spectrum::black(),
+		);
+
+		let light = Sphere::new(
+			Point::new(0.0, 0.0, 10.0),
+			8.0,
+			Material::new(
+				BSDF::Diffuse,
+				Spectrum::black(),
+				Spectrum::white(),
+			),
+		);
+
+		let (p1, p2, p3) = (Point::new(-5.0, -5.0, -20.0),
+							Point::new(5.0, -5.0, -20.0),
+							Point::new(5.0, 5.0, -20.0));
+		let triangle = Triangle::new(
+			p1, p2, p3,
+			Vector::new_normalized(-0.4, 0.0, 1.0),
+			Vector::new_normalized(0.4, 0.0, 1.0),
+			Vector::new_normalized(0.0, 0.0, 1.0),
+			material,
+		);
+
+		Scene::new(vec![triangle], vec![light])
+	}
+
+    fn load_obj(filename: &str, scale: f64, offset: Point, material: Material) -> Vec<Triangle> {
+		let (models, _) = tobj::load_obj(filename, true).unwrap();
+		let m = &models[0];
+		let mesh = &m.mesh;
+
+		let points: Vec<Point> = (0..mesh.positions.len() / 3).map(|v| {
+			let v = Vector::new(
+                mesh.positions[3 * v].into(),
+                mesh.positions[3 * v + 1].into(),
+                mesh.positions[3 * v + 2].into(),
+			);
+			offset + (v * scale)
+		}).collect();
+		let vn: Option<Vec<Vector>> = if !mesh.normals.is_empty() {
+			Some((0..mesh.positions.len() / 3).map(|i| {
+				let v = Vector::new(
+					mesh.normals[3 * i].into(),
+					mesh.normals[3 * i + 1].into(),
+					mesh.normals[3 * i + 2].into(),
+				);
+				v
+			}).collect())
+		} else {
+			None
+		};
+
+		let mut triangles = Vec::new();
+		let mut next_face = 0;
+		for f in 0..mesh.num_face_indices.len() {
+			let end = next_face + mesh.num_face_indices[f] as usize;
+			let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
+
+			let (i1, i2, i3) = (*face_indices[0] as usize,
+								*face_indices[1] as usize,
+								*face_indices[2] as usize);
+			let (p1, p2, p3) = (points[i1],
+								points[i2],
+								points[i3]);
+
+			triangles.push(if let Some(ref vn) = vn {
+				let (vn1, vn2, vn3) = (vn[i1],
+									   vn[i2],
+									   vn[i3]);
+				Triangle::new(
+					p1, p2, p3,
+					vn1, vn2, vn3,
+					material,
+				)
+			} else {
+				Triangle::new_without_vn(
+					p1, p2, p3,
+					material,
+				)
+			});
+
+
+			next_face = end
+		}
+		triangles
+    }
+
+    pub fn new_dragon() -> Scene {
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 red_diffuse_material,
+			 mut triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let material = Material::new(
+			BSDF::Diffuse,
+			Spectrum::grey(),
+			Spectrum::black(),
+		);
+		let dragon_scale = 2.0;
+		triangles.extend(Scene::load_obj("obj/dragon.obj", dragon_scale, Point::new(
+			-half_length / 3.0,
+			-half_length,
+			box_z_offset - 2.0 * half_length / 3.0), material));
+
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(half_length / 3.0 + 2.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0 + 2.0),
+						sphere_radius,
+						red_diffuse_material),
+		];
+
+		Scene::new(triangles, spheres)
+    }
+
+    pub fn new_teapot() -> Scene {
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 red_diffuse_material,
+			 mut triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let material = Material::new(
+			BSDF::Diffuse,
+			Spectrum::grey(),
+			Spectrum::black(),
+		);
+		let teapot_scale = 0.13;
+		triangles.extend(Scene::load_obj("obj/teapot.obj", teapot_scale, Point::new(
+			-half_length / 3.0 - 2.0,
+			-15.0,
+			box_z_offset - 2.5 * half_length / 3.0), material));
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+		];
+
+		Scene::new(triangles, spheres)
     }
 
 	fn cornell_box() -> CornellBox {
@@ -133,83 +288,70 @@ impl Scene {
 
         let triangles = vec![
 			// bottom wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p1,
 				p0,
 				p2,
 				grey_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p3,
 				p2,
 				p0,
 				grey_diffuse_material,
 			),
 			// top wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p4,
 				p5,
 				p6,
 				grey_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p7,
 				p6,
 				p5,
 				grey_diffuse_material,
 			),
 			// back wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p4,
 				p1,
 				p2,
 				green_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p2,
 				p5,
 				p4,
 				green_diffuse_material,
 			),
 			// left wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p8,
 				p0,
 				p9,
 				red_diffuse_material,
 			),
-			Triangle::new(
-				p9,
-				p8,
+			Triangle::new_without_vn(
 				p1,
+				p9,
+				p0,
 				red_diffuse_material,
 			),
 			// right wall
-			Triangle::new(
+			Triangle::new_without_vn(
 				p3,
 				p11,
 				p2,
 				blue_diffuse_material,
 			),
-			Triangle::new(
+			Triangle::new_without_vn(
 				p10,
 				p2,
 				p11,
 				blue_diffuse_material,
 			),
-			// wall behind camera
-			// Triangle::new(
-			// 	p12,
-			// 	p13,
-			// 	p0,
-			// 	grey_diffuse_material,
-			// ),
-			// Triangle::new(
-			// 	p3,
-			// 	p0,
-			// 	p13,
-			// 	grey_diffuse_material,
-			// ),
 		];
 
 		CornellBox {
