@@ -78,12 +78,10 @@ impl Object {
     pub fn surface_normal(&self, point: Point) -> Vector {
 		match self {
 			Object::Triangle(triangle) => {
-				let b = triangle.barycentric_coordinates(point);
-				let (u, v, w) = (b.u, b.v, b.w);
-				triangle.vn1 * u + triangle.vn2 * v + triangle.vn3 * w
+				triangle.surface_normal(point)
 			},
 			Object::Sphere(sphere) => {
-				(point - sphere.center).normalized()
+				sphere.surface_normal(point)
 			}
 		}
 	}
@@ -211,7 +209,7 @@ pub struct Triangle {
 	vn1: Vector,
 	vn2: Vector,
 	vn3: Vector,
-	plane_normal: Vector,
+	plane_normal_not_normalized: Vector,
     material: Material,
 	node_index: usize,
 }
@@ -247,6 +245,10 @@ impl Sphere {
 		let point = self.center.clone();
 		point + (random_vector * self.radius)
 	}
+
+	fn surface_normal(&self, point: Point) -> Vector {
+		(point - self.center).normalized()
+	}
 }
 
 struct BarycentricCoordinates {
@@ -264,11 +266,11 @@ impl Triangle {
 			   vn3: Vector,
 			   material: Material) -> Triangle {
 		let (vn1, vn2, vn3) = (vn1.normalized(), vn2.normalized(), vn3.normalized());
-		let plane_normal = ((p2 - p1).cross(p3 - p1)).normalized();
+		let plane_normal_not_normalized = (p2 - p1).cross(p3 - p1);
 		Triangle {
 			p1, p2, p3,
 			vn1, vn2, vn3,
-			plane_normal,
+			plane_normal_not_normalized,
 			material,
 			node_index: 0,
 		}
@@ -278,7 +280,7 @@ impl Triangle {
 						  p2: Point,
 						  p3: Point,
 						  material: Material) -> Triangle {
-		let normal = ((p2 - p1).cross(p3 - p1)).normalized();
+		let normal = (p2 - p1).cross(p3 - p1);
 		Triangle::new(
 			p1, p2, p3,
 			normal, normal, normal,
@@ -289,8 +291,9 @@ impl Triangle {
 	fn barycentric_coordinates(&self, p: Point) -> BarycentricCoordinates {
 		// Use barycentric coordinates to interpolate between the
 		// vertex normals. From scratchapixel.
-		let n = self.plane_normal;
+		let n = self.plane_normal_not_normalized;
 		let denom = n.dot(n);
+
 		// calculating u
 		let edge1 = self.p2 - self.p1;
 		let vp1 = p - self.p1;
@@ -305,6 +308,14 @@ impl Triangle {
 		BarycentricCoordinates {
 			u, v, w,
 		}
+	}
+
+	fn surface_normal(&self, point: Point) -> Vector {
+		let b = self.barycentric_coordinates(point);
+		let (u, v, w) = (b.u, b.v, b.w);
+		let normal = self.vn1 * u + self.vn2 * v + self.vn3 * w;
+		// println!(
+		normal
 	}
 }
 
@@ -347,4 +358,33 @@ impl Bounded for Triangle {
 
 fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
 	bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn debug_triangle_surface_normal() {
+		let material = Material::new(
+			BSDF::Specular,
+			Spectrum::white(),
+			Spectrum::black(),
+		);
+
+		let triangle = Triangle::new(
+			Point::new(-5.0, -5.0, -20.0),
+			Point::new(5.0, -5.0, -20.0),
+			Point::new(5.0, 5.0, -20.0),
+			Vector::new_normalized(-0.4, 0.0, 1.0),
+			Vector::new_normalized(0.4, 0.0, 1.0),
+			Vector::new_normalized(0.0, 0.0, 1.0),
+			material,
+		);
+
+		let ipoint = Point::new(4.173316472713594,
+								3.2582371132481547,
+								-19.999999903330043);
+		println!("{}", triangle.surface_normal(ipoint));
+	}
 }

@@ -83,32 +83,39 @@ impl Scene {
 
 	pub fn new_triangle() -> Scene {
 		let material = Material::new(
-			BSDF::Diffuse,
-			Spectrum::green(),
+			BSDF::Specular,
+			Spectrum::white(),
 			Spectrum::black(),
 		);
 
-		let (p1, p2, p3) = (Point::new(-5.0, 0.0, -20.0),
-							Point::new(5.0, 0.0, -20.0),
-							Point::new(5.0, 5.0, -20.0));
+		let light = Sphere::new(
+			Point::new(0.0, 0.0, 10.0),
+			8.0,
+			Material::new(
+				BSDF::Diffuse,
+				Spectrum::black(),
+				Spectrum::white(),
+			),
+		);
 
-		let triangle = Triangle::new_without_vn(
+		let (p1, p2, p3) = (Point::new(-5.0, -5.0, -20.0),
+							Point::new(5.0, -5.0, -20.0),
+							Point::new(5.0, 5.0, -20.0));
+		let triangle = Triangle::new(
 			p1, p2, p3,
+			Vector::new_normalized(-0.4, 0.0, 1.0),
+			Vector::new_normalized(0.4, 0.0, 1.0),
+			Vector::new_normalized(0.0, 0.0, 1.0),
 			material,
 		);
 
-		Scene::new(vec![triangle], vec![])
+		Scene::new(vec![triangle], vec![light])
 	}
 
-    fn load_dragon(scale: f64, offset: Point) -> Vec<Triangle> {
-		let (models, _) = tobj::load_obj("obj/dragon.obj", true).unwrap();
+    fn load_obj(filename: &str, scale: f64, offset: Point, material: Material) -> Vec<Triangle> {
+		let (models, _) = tobj::load_obj(filename, true).unwrap();
 		let m = &models[0];
 		let mesh = &m.mesh;
-		let material = Material::new(
-			BSDF::Specular,
-			Spectrum::grey(),
-			Spectrum::black(),
-		);
 
 		let points: Vec<Point> = (0..mesh.positions.len() / 3).map(|v| {
 			let v = Vector::new(
@@ -173,11 +180,47 @@ impl Scene {
 			 red_diffuse_material,
 			 mut triangles,
 		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let material = Material::new(
+			BSDF::Diffuse,
+			Spectrum::grey(),
+			Spectrum::black(),
+		);
 		let dragon_scale = 2.0;
-		triangles.extend(Scene::load_dragon(dragon_scale, Point::new(
+		triangles.extend(Scene::load_obj("obj/dragon.obj", dragon_scale, Point::new(
 			-half_length / 3.0,
 			-half_length,
-			box_z_offset - 2.0 * half_length / 3.0)));
+			box_z_offset - 2.0 * half_length / 3.0), material));
+
+		let sphere_radius = 6.0;
+        let spheres = vec![
+			cb.sphere_light,
+			Sphere::new(Point::new(half_length / 3.0,
+								   -half_length + sphere_radius,
+								   box_z_offset - half_length / 3.0),
+						sphere_radius,
+						red_diffuse_material),
+		];
+
+		Scene::new(triangles, spheres)
+    }
+
+    pub fn new_teapot() -> Scene {
+		let cb = Scene::cornell_box();
+		let (half_length,
+			 box_z_offset,
+			 red_diffuse_material,
+			 mut triangles,
+		) = (cb.half_length, cb.box_z_offset, cb.red_diffuse_material, cb.triangles);
+		let material = Material::new(
+			BSDF::Specular,
+			Spectrum::white(),
+			Spectrum::black(),
+		);
+		let teapot_scale = 0.15;
+		triangles.extend(Scene::load_obj("obj/teapot.obj", teapot_scale, Point::new(
+			-half_length / 3.0,
+			0.0,
+			box_z_offset - 2.0 * half_length / 3.0), material));
 		let sphere_radius = 6.0;
         let spheres = vec![
 			cb.sphere_light,
