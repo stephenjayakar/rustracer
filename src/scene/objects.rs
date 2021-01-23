@@ -314,7 +314,7 @@ impl Triangle {
 		let b = self.barycentric_coordinates(point);
 		let (u, v, w) = (b.u, b.v, b.w);
 		let normal = self.vn1 * u + self.vn2 * v + self.vn3 * w;
-		// println!(
+		dp!(u, v, w, normal);
 		normal
 	}
 }
@@ -385,6 +385,6 @@ mod tests {
 		let ipoint = Point::new(4.173316472713594,
 								3.2582371132481547,
 								-19.999999903330043);
-		println!("{}", triangle.surface_normal(ipoint));
+		triangle.surface_normal(ipoint);
 	}
 }
