@@ -1,6 +1,6 @@
 use crate::Config;
 use crate::canvas::Canvas;
-use crate::common::Spectrum;
+use crate::common::{Spectrum, weighted_coin_flip};
 use crate::scene::{Point, Ray, Scene, Vector, RayIntersection};
 use rayon::prelude::*;
 
@@ -150,8 +150,7 @@ impl Raytracer {
 		let mut l = self.one_bounce_radiance_importance(intersection);
 
 		// russian roulette for "infinite bounces"
-		let sample = fastrand::f32();
-		if sample > RUSSIAN_ROULETTE_PROBABILITY {
+		if !weighted_coin_flip(RUSSIAN_ROULETTE_PROBABILITY) {
 			return l
 		}
 

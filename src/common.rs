@@ -139,3 +139,9 @@ impl Mul<f64> for Spectrum {
         )
     }
 }
+
+/// Given the probablity to flip heads, returns true if the coin flips heads.
+pub fn weighted_coin_flip(probability: f32) -> bool {
+	let sample = fastrand::f32();
+	sample <= probability
+}
