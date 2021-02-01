@@ -59,17 +59,20 @@ impl Raytracer {
     /// Algorithm to covert pixel positions in screen-space to a 3D Vector in world-space.
     /// Assumes the camera is pointing in -z at the origin.
     fn screen_to_world(&self, i: u32, j: u32) -> Vector {
+		let w = self.config.screen_width as f64;
+		let h = self.config.screen_height as f64;
+		let aspect_ratio = w / h;
         let z = 1.7;
         let (iw, jh) = (
-            (i as f64 + 0.5) / (self.config.screen_width as f64),
-            (j as f64 + 0.5) / (self.config.screen_height as f64),
+            (i as f64 + 0.5) / w,
+            (j as f64 + 0.5) / h,
         );
         let fov = self.config.fov;
         let half_fov = fov * 0.5;
 
         let start = f64::sin(-half_fov);
         let total = -2.0 * start;
-        let xi = start + iw * total;
+        let xi = (start + iw * total) * aspect_ratio;
         let yi = -start - jh * total;
 
         let direction = Vector::new_normalized(xi, yi, -z);
