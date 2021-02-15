@@ -121,5 +121,5 @@ fn main() {
     let config = Config::from_args();
 
     let raytracer = Raytracer::new(config, Scene::new_dragon());
-	raytracer.start();
+    raytracer.start();
 }

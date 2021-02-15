@@ -4,13 +4,13 @@ use crate::scene::{Point, Ray, RayIntersection, Scene, Vector};
 use crate::Config;
 use rayon::prelude::*;
 
-use std::{f64::consts::PI, thread, sync::Arc};
 use std::time::Instant;
+use std::{f64::consts::PI, sync::Arc, thread};
 
 const RUSSIAN_ROULETTE_PROBABILITY: f32 = 0.7;
 
 pub struct Raytracer {
-	inner: Arc<RaytracerInner>,
+    inner: Arc<RaytracerInner>,
 }
 
 struct RaytracerInner {
@@ -197,7 +197,6 @@ impl RaytracerInner {
         }
     }
 
-
     /// Helpful function to test a pixel's behavior.  Use this in combination
     /// with the mouse_down pixel print implemented
     pub fn test(&self, i: u32, j: u32) {
@@ -210,34 +209,34 @@ impl RaytracerInner {
 }
 
 impl Raytracer {
-	pub fn new(config: Config, scene: Scene) -> Raytracer {
+    pub fn new(config: Config, scene: Scene) -> Raytracer {
         let canvas = Canvas::new(
             config.screen_width,
             config.screen_height,
             config.high_dpi,
             config.image_mode,
         );
-        Raytracer { inner: Arc::new(
-			RaytracerInner {
-				config,
-				canvas,
-				scene,
-			})
-		}
-	}
+        Raytracer {
+            inner: Arc::new(RaytracerInner {
+                config,
+                canvas,
+                scene,
+            }),
+        }
+    }
 
     pub fn start(&self) {
-		let local_self = self.inner.clone();
-		thread::spawn(move || {
-			let start = Instant::now();
-			if !local_self.config.debug {
-				local_self.render();
-			} else {
-				local_self.debug_render();
-			}
-			let duration = start.elapsed();
-			println!("Rendering took: {:?}", duration);
-		});
-		self.inner.canvas.start();
+        let local_self = self.inner.clone();
+        thread::spawn(move || {
+            let start = Instant::now();
+            if !local_self.config.debug {
+                local_self.render();
+            } else {
+                local_self.debug_render();
+            }
+            let duration = start.elapsed();
+            println!("Rendering took: {:?}", duration);
+        });
+        self.inner.canvas.start();
     }
 }
