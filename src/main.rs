@@ -8,9 +8,6 @@ macro_rules! dp {
 		dp!($($y),+);
 	};
 }
-
-use std::{sync::Arc, thread};
-
 use clap::{App, Arg};
 
 mod canvas;
