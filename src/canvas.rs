@@ -38,7 +38,6 @@ pub struct Canvas {
 impl Canvas {
     /// Initializes the canvas with concurrency constructs.
     pub fn new(width: u32, height: u32, high_dpi: bool, image_mode: bool) -> Canvas {
-        // TODO: make this bounded for performance reasons
         let (s, r) = unbounded::<DrawPixelMessage>();
         Canvas {
             sender: s,
@@ -82,7 +81,6 @@ impl Canvas {
     fn save_canvas(&self) {
         let (w, h) = (self.width as usize, self.height as usize);
         let buffer_size = w * h * 3;
-        // TODO: we could use this buffer again :P
         let mut pixels: Vec<u8> = vec![0; buffer_size];
         for dpm in self.receiver.try_iter() {
             let (x, y, s) = (dpm.x as usize, dpm.y as usize, dpm.s);
@@ -166,7 +164,7 @@ impl Canvas {
 
     pub fn draw_pixel(&self, x: u32, y: u32, s: Spectrum) -> bool {
         // maybe only do this check if debug?
-        if x >= self.width || y >= self.width {
+        if x >= self.width || y >= self.height {
             return false;
         }
         self.sender.send(DrawPixelMessage { x, y, s }).unwrap();
