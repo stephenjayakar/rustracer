@@ -120,10 +120,6 @@ fn main() {
     // parse args
     let config = Config::from_args();
 
-    // TODO: ideally, we can move this logic to within the raytracer.
-    // one way to do this is to have a wrapper class with an Arc to inner
-    let raytracer = Arc::new(Raytracer::new(config, Scene::new_dragon()));
-    let thread_raytracer = raytracer.clone();
-    thread::spawn(move || thread_raytracer.start());
-    raytracer.canvas.start();
+    let raytracer = Raytracer::new(config, Scene::new_dragon());
+	raytracer.start();
 }

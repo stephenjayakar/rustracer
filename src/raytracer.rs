@@ -4,32 +4,22 @@ use crate::scene::{Point, Ray, RayIntersection, Scene, Vector};
 use crate::Config;
 use rayon::prelude::*;
 
-use std::f64::consts::PI;
+use std::{f64::consts::PI, thread, sync::Arc};
 use std::time::Instant;
 
 const RUSSIAN_ROULETTE_PROBABILITY: f32 = 0.7;
 
 pub struct Raytracer {
+	inner: Arc<RaytracerInner>,
+}
+
+struct RaytracerInner {
     config: Config,
-    pub canvas: Canvas,
+    canvas: Canvas,
     scene: Scene,
 }
 
-impl Raytracer {
-    pub fn new(config: Config, scene: Scene) -> Raytracer {
-        let canvas = Canvas::new(
-            config.screen_width,
-            config.screen_height,
-            config.high_dpi,
-            config.image_mode,
-        );
-        Raytracer {
-            config,
-            canvas,
-            scene,
-        }
-    }
-
+impl RaytracerInner {
     /// For each pixel of the output image, casts ray(s) into the `Scene` and writes the according
     /// `Spectrum` value to the `Canvas`.
     pub fn render(&self) {
@@ -207,16 +197,6 @@ impl Raytracer {
         }
     }
 
-    pub fn start(&self) {
-        let start = Instant::now();
-        if !self.config.debug {
-            self.render();
-        } else {
-            self.debug_render();
-        }
-        let duration = start.elapsed();
-        println!("Rendering took: {:?}", duration);
-    }
 
     /// Helpful function to test a pixel's behavior.  Use this in combination
     /// with the mouse_down pixel print implemented
@@ -226,5 +206,38 @@ impl Raytracer {
         } else {
             println!("{:?}", self.debug_render_helper(i, j));
         }
+    }
+}
+
+impl Raytracer {
+	pub fn new(config: Config, scene: Scene) -> Raytracer {
+        let canvas = Canvas::new(
+            config.screen_width,
+            config.screen_height,
+            config.high_dpi,
+            config.image_mode,
+        );
+        Raytracer { inner: Arc::new(
+			RaytracerInner {
+				config,
+				canvas,
+				scene,
+			})
+		}
+	}
+
+    pub fn start(&self) {
+		let local_self = self.inner.clone();
+		thread::spawn(move || {
+			let start = Instant::now();
+			if !local_self.config.debug {
+				local_self.render();
+			} else {
+				local_self.debug_render();
+			}
+			let duration = start.elapsed();
+			println!("Rendering took: {:?}", duration);
+		});
+		self.inner.canvas.start();
     }
 }
