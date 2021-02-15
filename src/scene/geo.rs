@@ -1,8 +1,8 @@
 extern crate nalgebra as na;
 
+use std::f64::consts::PI;
 use std::fmt;
 use std::ops::{Add, Mul, Sub};
-use std::f64::consts::PI;
 
 use na::base::{Matrix3, Vector3};
 use na::geometry::Point3;
@@ -36,9 +36,9 @@ impl Point {
         Point::new_from_na(p)
     }
 
-	pub fn origin() -> Point {
-		Point::new(0.0, 0.0, 0.0)
-	}
+    pub fn origin() -> Point {
+        Point::new(0.0, 0.0, 0.0)
+    }
 
     fn new_from_na(p: Point3<f64>) -> Point {
         Point { p }
@@ -58,9 +58,9 @@ impl Point {
 }
 
 impl fmt::Display for Point {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "p({} {} {})", self.x(), self.y(), self.z())
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "p({} {} {})", self.x(), self.y(), self.z())
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -99,22 +99,22 @@ impl Vector {
         Vector::new(xs, ys, zs)
     }
 
-	pub fn to_coord_space(&self, normal: Vector) -> Vector {
+    pub fn to_coord_space(&self, normal: Vector) -> Vector {
         // make_coord_space from 184.  make it a function if we use it again
         // TODO: unsure if these clones are necessary
-		// special handling if normal is (0, 1, 0), as cross products will be undefined.
-		// other behavior
+        // special handling if normal is (0, 1, 0), as cross products will be undefined.
+        // other behavior
         let mut z = normal.v.clone();
         let mut h = z.clone();
         if f64::abs(h.x) <= f64::abs(h.y) && f64::abs(h.x) <= f64::abs(h.z) {
             h.y = 1.0;
-			// TODO: Unsure about these.  meant to fix the cross multiplication issues.
-			h.x += EPS;
-			h.z += EPS;
+            // TODO: Unsure about these.  meant to fix the cross multiplication issues.
+            h.x += EPS;
+            h.z += EPS;
         } else {
             h.z = 1.0;
-			h.x += EPS;
-			h.y += EPS;
+            h.x += EPS;
+            h.y += EPS;
         }
 
         z = z.normalize();
@@ -123,11 +123,11 @@ impl Vector {
 
         let o2w = Matrix3::from_columns(&[x, y, z]);
         Vector::new_from_na(o2w * self.v)
-	}
+    }
 
-	/// Samples uniformly on a unit sphere and returns the associated vector
-	pub fn random_sphere() -> Vector {
-		// TODO: figure out how to not repeat this for hemisphere
+    /// Samples uniformly on a unit sphere and returns the associated vector
+    pub fn random_sphere() -> Vector {
+        // TODO: figure out how to not repeat this for hemisphere
         let xi1 = fastrand::f64();
         let xi2 = fastrand::f64();
 
@@ -136,8 +136,8 @@ impl Vector {
         let xs = f64::sin(phi) * f64::cos(theta);
         let ys = f64::sin(phi) * f64::sin(theta);
         let zs = f64::cos(phi);
-		Vector::new(xs, ys, zs)
-	}
+        Vector::new(xs, ys, zs)
+    }
 
     pub fn norm(&self) -> f64 {
         self.v.norm()
@@ -151,9 +151,9 @@ impl Vector {
         self.v.dot(&other_vector.v)
     }
 
-	pub fn cross(&self, other_vector: Vector) -> Vector {
-		Vector::new_from_na(self.v.cross(&other_vector.v))
-	}
+    pub fn cross(&self, other_vector: Vector) -> Vector {
+        Vector::new_from_na(self.v.cross(&other_vector.v))
+    }
 
     pub fn x(&self) -> f64 {
         self.v[0]
@@ -169,9 +169,9 @@ impl Vector {
 }
 
 impl fmt::Display for Vector {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "v({} {} {})", self.x(), self.y(), self.z())
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "v({} {} {})", self.x(), self.y(), self.z())
+    }
 }
 
 impl Sub for Point {
@@ -215,7 +215,7 @@ impl Sub for Vector {
 }
 
 impl Mul<f64> for Vector {
-	type Output = Vector;
+    type Output = Vector;
     fn mul(self, other: f64) -> Vector {
         Vector::new_from_na(self.v * other)
     }

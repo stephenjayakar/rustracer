@@ -9,7 +9,9 @@ macro_rules! dp {
 	};
 }
 
-use clap::{Arg, App};
+use std::{sync::Arc, thread};
+
+use clap::{App, Arg};
 
 mod canvas;
 mod common;
@@ -31,18 +33,18 @@ pub struct Config {
     screen_height: u32,
     fov: f64,
     origin: Point,
-	samples_per_pixel: u32,
-	light_samples: u32,
-	bounces: u32,
-	debug: bool,
-	high_dpi: bool,
-	image_mode: bool,
-	single_threaded: bool,
+    samples_per_pixel: u32,
+    light_samples: u32,
+    bounces: u32,
+    debug: bool,
+    high_dpi: bool,
+    image_mode: bool,
+    single_threaded: bool,
 }
 
 impl Config {
-	fn from_args() -> Config {
-		let matches = App::new("rustracer")
+    fn from_args() -> Config {
+        let matches = App::new("rustracer")
 			.arg(Arg::with_name("s")
 				 .short("s")
 				 .takes_value(true)
@@ -78,42 +80,50 @@ impl Config {
 				 .help("Mode that runs without parallelization"))
 			.get_matches();
 
-		let light_samples = matches.value_of("l")
-			.map_or(DEFAULT_LIGHT_SAMPLES, |arg| arg.parse().unwrap());
-		let samples_per_pixel = matches.value_of("s")
-			.map_or(DEFAULT_SAMPLES_PER_PIXEL, |arg| arg.parse().unwrap());
-		let bounces = matches.value_of("b")
-			.map_or(DEFAULT_MAX_BOUNCES, |arg| arg.parse().unwrap());
-		let screen_width = matches.value_of("w")
-			.map_or(DEFAULT_SCREEN_WIDTH, |arg| arg.parse().unwrap());
-		let screen_height = matches.value_of("h")
-			.map_or(DEFAULT_SCREEN_HEIGHT, |arg| arg.parse().unwrap());
-		let debug = matches.is_present("debug");
-		let high_dpi = matches.is_present("high_dpi");
-		let image_mode = matches.is_present("image_mode");
-		let single_threaded = matches.is_present("single_threaded");
+        let light_samples = matches
+            .value_of("l")
+            .map_or(DEFAULT_LIGHT_SAMPLES, |arg| arg.parse().unwrap());
+        let samples_per_pixel = matches
+            .value_of("s")
+            .map_or(DEFAULT_SAMPLES_PER_PIXEL, |arg| arg.parse().unwrap());
+        let bounces = matches
+            .value_of("b")
+            .map_or(DEFAULT_MAX_BOUNCES, |arg| arg.parse().unwrap());
+        let screen_width = matches
+            .value_of("w")
+            .map_or(DEFAULT_SCREEN_WIDTH, |arg| arg.parse().unwrap());
+        let screen_height = matches
+            .value_of("h")
+            .map_or(DEFAULT_SCREEN_HEIGHT, |arg| arg.parse().unwrap());
+        let debug = matches.is_present("debug");
+        let high_dpi = matches.is_present("high_dpi");
+        let image_mode = matches.is_present("image_mode");
+        let single_threaded = matches.is_present("single_threaded");
 
-		Config {
-			screen_width,
-			screen_height,
-			fov: f64::to_radians(DEFAULT_FOV_DEGREES),
-			origin: Point::new(0.0, 0.0, 0.0),
-			samples_per_pixel,
-			light_samples,
-			bounces,
-			debug,
-			high_dpi,
-			image_mode,
-			single_threaded,
-		}
-	}
+        Config {
+            screen_width,
+            screen_height,
+            fov: f64::to_radians(DEFAULT_FOV_DEGREES),
+            origin: Point::new(0.0, 0.0, 0.0),
+            samples_per_pixel,
+            light_samples,
+            bounces,
+            debug,
+            high_dpi,
+            image_mode,
+            single_threaded,
+        }
+    }
 }
 
 fn main() {
     // parse args
-	let config = Config::from_args();
+    let config = Config::from_args();
 
-    let raytracer = Raytracer::new(config, Scene::new_dragon());
-	// raytracer.test(362, 371);
-	raytracer.start();
+    // TODO: ideally, we can move this logic to within the raytracer.
+    // one way to do this is to have a wrapper class with an Arc to inner
+    let raytracer = Arc::new(Raytracer::new(config, Scene::new_dragon()));
+    let thread_raytracer = raytracer.clone();
+    thread::spawn(move || thread_raytracer.start());
+    raytracer.canvas.start();
 }
