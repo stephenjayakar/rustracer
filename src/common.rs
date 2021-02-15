@@ -1,4 +1,4 @@
-#[cfg(feature="gui")]
+#[cfg(feature = "gui")]
 extern crate sdl2;
 
 use std::ops::{Add, AddAssign, Mul};
@@ -15,24 +15,26 @@ pub struct Spectrum {
 }
 
 impl Spectrum {
-    #[cfg(feature="gui")]
+    #[cfg(feature = "gui")]
     pub fn to_sdl2_color(&self) -> sdl2::pixels::Color {
         sdl2::pixels::Color::RGB(self.r(), self.g(), self.b())
     }
 
     pub fn new(r: u8, g: u8, b: u8) -> Spectrum {
-        Spectrum { r: r as f64 / 255.0,
-				   g: g as f64 / 255.0,
-				   b: b as f64 / 255.0}
+        Spectrum {
+            r: r as f64 / 255.0,
+            g: g as f64 / 255.0,
+            b: b as f64 / 255.0,
+        }
     }
 
-	pub fn new_f(r: f64, g: f64, b: f64) -> Spectrum {
-		Spectrum { r, g, b }
-	}
+    pub fn new_f(r: f64, g: f64, b: f64) -> Spectrum {
+        Spectrum { r, g, b }
+    }
 
     pub fn is_black(&self) -> bool {
-		let color = self.r + self.g + self.b;
-		color <= 0.0 + EPS as f64
+        let color = self.r + self.g + self.b;
+        color <= 0.0 + EPS as f64
     }
 
     fn to_u8(val: f64) -> u8 {
@@ -45,7 +47,7 @@ impl Spectrum {
     }
 
     fn to_color(intensity: f64) -> u8 {
-		// pow(...) is gamma correction
+        // pow(...) is gamma correction
         Spectrum::to_u8(f64::powf(intensity.clamp(0.0, 1.0), 1.0 / 2.2) * 255.0)
     }
 
@@ -61,46 +63,46 @@ impl Spectrum {
         Spectrum::to_color(self.b)
     }
 
-	// Unsure how I feel about these, as we're clamping on return
+    // Unsure how I feel about these, as we're clamping on return
     // fn ri(&self) -> f64 {
-	// 	f64::min(1.0, self.r)
+    // 	f64::min(1.0, self.r)
     // }
 
     // fn gi(&self) -> f64 {
-	// 	f64::min(1.0, self.g)
+    // 	f64::min(1.0, self.g)
     // }
 
     // fn bi(&self) -> f64 {
-	// 	f64::min(1.0, self.b)
+    // 	f64::min(1.0, self.b)
     // }
 
-	pub fn black() -> Spectrum {
-		Spectrum::new_f(0.0, 0.0, 0.0)
-	}
+    pub fn black() -> Spectrum {
+        Spectrum::new_f(0.0, 0.0, 0.0)
+    }
 
-	pub fn white() -> Spectrum {
-		Spectrum::new_f(1.0, 1.0, 1.0)
-	}
+    pub fn white() -> Spectrum {
+        Spectrum::new_f(1.0, 1.0, 1.0)
+    }
 
-	pub fn grey() -> Spectrum {
-		Spectrum::new_f(0.78, 0.78, 0.78)
-	}
+    pub fn grey() -> Spectrum {
+        Spectrum::new_f(0.78, 0.78, 0.78)
+    }
 
-	pub fn red() -> Spectrum {
-		Spectrum::new_f(1.0, 0.0, 0.0)
-	}
+    pub fn red() -> Spectrum {
+        Spectrum::new_f(1.0, 0.0, 0.0)
+    }
 
-	pub fn blue() -> Spectrum {
-		Spectrum::new_f(0.0, 0.0, 1.0)
-	}
+    pub fn blue() -> Spectrum {
+        Spectrum::new_f(0.0, 0.0, 1.0)
+    }
 
-	pub fn green() -> Spectrum {
-		Spectrum::new_f(0.0, 1.0, 0.0)
-	}
+    pub fn green() -> Spectrum {
+        Spectrum::new_f(0.0, 1.0, 0.0)
+    }
 
-	pub fn purple() -> Spectrum {
-		Spectrum::new_f(0.5, 0.0, 0.5)
-	}
+    pub fn purple() -> Spectrum {
+        Spectrum::new_f(0.5, 0.0, 0.5)
+    }
 }
 
 impl Add for Spectrum {
@@ -119,10 +121,7 @@ impl AddAssign for Spectrum {
 impl Mul for Spectrum {
     type Output = Spectrum;
     fn mul(self, other: Spectrum) -> Self::Output {
-        Spectrum::new_f(
-            self.r * other.r,
-            self.g * other.g,
-            self.b * other.b)
+        Spectrum::new_f(self.r * other.r, self.g * other.g, self.b * other.b)
     }
 }
 
@@ -132,16 +131,12 @@ impl Mul<f64> for Spectrum {
         let new_r = self.r * other;
         let new_g = self.g * other;
         let new_b = self.b * other;
-        Spectrum::new_f(
-			new_r,
-			new_g,
-			new_b,
-        )
+        Spectrum::new_f(new_r, new_g, new_b)
     }
 }
 
 /// Given the probablity to flip heads, returns true if the coin flips heads.
 pub fn weighted_coin_flip(probability: f32) -> bool {
-	let sample = fastrand::f32();
-	sample <= probability
+    let sample = fastrand::f32();
+    sample <= probability
 }
