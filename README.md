@@ -16,6 +16,12 @@ General inspiration was that I could no longer find the latest version of my CS-
 
 make sure you have `rust` :Z
 
+## Running with GUI
+
+```sh
+cargo run --release --features=gui -- --high-dpi
+```
+
 ## Mac OSX
 
 ```sh
