@@ -14,6 +14,12 @@ pub struct Spectrum {
     b: f64,
 }
 
+impl core::fmt::Display for Spectrum {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "r:{} g:{} b:{}", self.r, self.g, self.b)
+    }
+}
+
 impl Spectrum {
     #[cfg(feature = "gui")]
     pub fn to_sdl2_color(&self) -> sdl2::pixels::Color {
