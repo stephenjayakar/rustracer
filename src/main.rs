@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![feature(const_fn)]
 // Quick macro to print out comma separated values. Used for debugging.
 macro_rules! dp {
 	($x:expr) => { println!("{}: {}", stringify!($x), $x); };
