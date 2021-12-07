@@ -128,10 +128,16 @@ impl Canvas {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
 
+        let mut dpmCache = Vec::<DrawPixelMessage>::new();
+
         // canvas loop
         'running: loop {
             // process draw pixel messages
             for draw_pixel_message in self.receiver.try_iter() {
+                dpmCache.push(draw_pixel_message);
+            }
+
+            for draw_pixel_message in dpmCache.iter() {
                 let (x, y, s) = (
                     draw_pixel_message.x,
                     draw_pixel_message.y,
@@ -143,7 +149,7 @@ impl Canvas {
                     .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
                     .expect("failed to draw rectangle");
             }
-            // canvas.present();
+            canvas.present();
             // process events
             for event in event_pump.poll_iter() {
                 match event {
