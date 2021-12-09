@@ -128,16 +128,18 @@ impl Canvas {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
 
-        let mut dpmCache = Vec::<DrawPixelMessage>::new();
+        // texture initialization
+        let texture_creator = canvas.texture_creator();
+        let texture = texture_creator.create_texture_target(
+            texture_creator.default_pixel_format(),
+            width,
+            height,
+        ).unwrap();
 
         // canvas loop
         'running: loop {
             // process draw pixel messages
             for draw_pixel_message in self.receiver.try_iter() {
-                dpmCache.push(draw_pixel_message);
-            }
-
-            for draw_pixel_message in dpmCache.iter() {
                 let (x, y, s) = (
                     draw_pixel_message.x,
                     draw_pixel_message.y,
