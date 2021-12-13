@@ -267,8 +267,7 @@ impl Triangle {
     }
 
     fn barycentric_coordinates(&self, p: Point) -> BarycentricCoordinates {
-        /* https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
-         */
+        // https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
         let v0 = self.p2 - self.p1;
         let v1 = self.p3 - self.p1;
         let v2 = p - self.p1;
