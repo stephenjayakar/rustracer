@@ -115,8 +115,10 @@ impl Canvas {
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
         let divider = if self.high_dpi { 2 } else { 1 };
+        let width = self.width / divider;
+        let height = self.height / divider;
         let window = video_subsystem
-            .window("rustracer", self.width / divider, self.height / divider)
+            .window("rustracer", width, height)
             .allow_highdpi()
             .build()
             .unwrap();
@@ -126,22 +128,32 @@ impl Canvas {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
 
+        let mut dpmCache = Vec::<DrawPixelMessage>::new();
+
         // canvas loop
         'running: loop {
+            let mut canvasUpdated = false;
             // process draw pixel messages
             for draw_pixel_message in self.receiver.try_iter() {
-                let (x, y, s) = (
-                    draw_pixel_message.x,
-                    draw_pixel_message.y,
-                    draw_pixel_message.s,
-                );
-                canvas.set_draw_color(s.to_sdl2_color());
-                let square_size = if self.high_dpi { 2 } else { 1 };
-                canvas
-                    .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
-                    .expect("failed to draw rectangle");
+                dpmCache.push(draw_pixel_message);
+                canvasUpdated = true;
             }
-            canvas.present();
+
+            if canvasUpdated {
+                for draw_pixel_message in dpmCache.iter() {
+                    let (x, y, s) = (
+                        draw_pixel_message.x,
+                        draw_pixel_message.y,
+                        draw_pixel_message.s,
+                    );
+                    canvas.set_draw_color(s.to_sdl2_color());
+                    let square_size = if self.high_dpi { 2 } else { 1 };
+                    canvas
+                        .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
+                        .expect("failed to draw rectangle");
+                }
+                canvas.present();
+            }
             // process events
             for event in event_pump.poll_iter() {
                 match event {
@@ -150,6 +162,12 @@ impl Canvas {
                         keycode: Some(Keycode::Escape),
                         ..
                     } => break 'running,
+                    Event::KeyDown {
+                        keycode: Some(Keycode::P),
+                        ..
+                    } => {
+                        canvas.present();
+                    },
                     Event::MouseButtonDown { x, y, .. } => println!(
                         "Mouse button down at coordinates ({}, {})",
                         x * divider as i32,
