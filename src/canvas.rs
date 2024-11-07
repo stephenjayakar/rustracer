@@ -1,12 +1,7 @@
-#[cfg(feature = "gui")]
 extern crate sdl2;
-#[cfg(feature = "gui")]
 use sdl2::event::Event;
-#[cfg(feature = "gui")]
 use sdl2::keyboard::Keycode;
-#[cfg(feature = "gui")]
 use sdl2::pixels::Color;
-#[cfg(feature = "gui")]
 use sdl2::rect::Rect;
 
 extern crate crossbeam_channel;
@@ -66,7 +61,6 @@ impl Canvas {
         writer
     }
 
-    #[cfg(feature = "gui")]
     /// Saves the canvas to a png file.  The filename is the '{current UNIX timestamp}.png'.
     fn save_canvas_gui(&self, canvas: &sdl2::render::Canvas<sdl2::video::Window>) {
         let pixels = canvas
@@ -96,21 +90,11 @@ impl Canvas {
     }
 
     pub fn start(&self) {
-        if cfg!(feature = "gui") {
-            #[cfg(feature = "gui")]
-            self.start_gui();
-        } else {
-            return self.save_canvas();
-        }
+        self.start_gui();
     }
 
-    #[cfg(feature = "gui")]
     /// Starts a new canvas context that takes over the main thread.
     pub fn start_gui(&self) {
-        if self.image_mode {
-            self.save_canvas();
-            return;
-        }
         let sdl_context = sdl2::init().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
