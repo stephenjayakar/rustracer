@@ -12,6 +12,7 @@ extern crate png;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -89,12 +90,15 @@ impl Canvas {
             .expect("Failed to write canvas to png");
     }
 
-    pub fn start(&self) {
-        self.start_gui();
+    pub fn start(&self, raytracer_inner: Arc<crate::raytracer::RaytracerInner>) {
+        self.start_gui(raytracer_inner);
     }
 
     /// Starts a new canvas context that takes over the main thread.
-    pub fn start_gui(&self) {
+    pub fn start_gui(&self, raytracer_inner: Arc<crate::raytracer::RaytracerInner>) {
+        // Create a Raytracer from the inner reference
+        let raytracer = crate::raytracer::Raytracer { inner: raytracer_inner };
+        
         let sdl_context = sdl2::init().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
@@ -138,6 +142,7 @@ impl Canvas {
                 }
                 canvas.present();
             }
+            
             // process events
             for event in event_pump.poll_iter() {
                 match event {
@@ -146,6 +151,80 @@ impl Canvas {
                         keycode: Some(Keycode::Escape),
                         ..
                     } => break 'running,
+                    
+                    // Camera movement with WASD
+                    Event::KeyDown {
+                        keycode: Some(Keycode::W),
+                        ..
+                    } => {
+                        // Interrupt any ongoing render
+                        raytracer.interrupt_render();
+                        // Move forward (negative Z)
+                        raytracer.move_camera(crate::scene::Vector::new(0.0, 0.0, -1.0));
+                        raytracer.render();
+                    },
+                    Event::KeyDown {
+                        keycode: Some(Keycode::S),
+                        ..
+                    } => {
+                        // Interrupt any ongoing render
+                        raytracer.interrupt_render();
+                        // Move backward (positive Z)
+                        raytracer.move_camera(crate::scene::Vector::new(0.0, 0.0, 1.0));
+                        raytracer.render();
+                    },
+                    Event::KeyDown {
+                        keycode: Some(Keycode::A),
+                        ..
+                    } => {
+                        // Interrupt any ongoing render
+                        raytracer.interrupt_render();
+                        // Move left (negative X)
+                        raytracer.move_camera(crate::scene::Vector::new(-1.0, 0.0, 0.0));
+                        raytracer.render();
+                    },
+                    Event::KeyDown {
+                        keycode: Some(Keycode::D),
+                        ..
+                    } => {
+                        // Interrupt any ongoing render
+                        raytracer.interrupt_render();
+                        // Move right (positive X)
+                        raytracer.move_camera(crate::scene::Vector::new(1.0, 0.0, 0.0));
+                        raytracer.render();
+                    },
+                    Event::KeyDown {
+                        keycode: Some(Keycode::Q),
+                        ..
+                    } => {
+                        // Interrupt any ongoing render
+                        raytracer.interrupt_render();
+                        // Move up (positive Y)
+                        raytracer.move_camera(crate::scene::Vector::new(0.0, 1.0, 0.0));
+                        raytracer.render();
+                    },
+                    Event::KeyDown {
+                        keycode: Some(Keycode::E),
+                        ..
+                    } => {
+                        // Interrupt any ongoing render
+                        raytracer.interrupt_render();
+                        // Move down (negative Y)
+                        raytracer.move_camera(crate::scene::Vector::new(0.0, -1.0, 0.0));
+                        raytracer.render();
+                    },
+                    
+                    // Toggle rendering mode with R
+                    Event::KeyDown {
+                        keycode: Some(Keycode::R),
+                        ..
+                    } => {
+                        // This will interrupt any current render and toggle the mode
+                        raytracer.toggle_rendering_mode();
+                        // Start a new render with the new mode
+                        raytracer.render();
+                    },
+                    
                     Event::KeyDown {
                         keycode: Some(Keycode::P),
                         ..
