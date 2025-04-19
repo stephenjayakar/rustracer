@@ -47,6 +47,10 @@ impl RaytracerInner {
         // Reset interrupt flag
         self.interrupt.store(false, std::sync::atomic::Ordering::SeqCst);
         
+        // Start timing
+        let start_time = Instant::now();
+        println!("Starting full render...");
+        
         // Get camera position once at the beginning
         let camera_pos = *self.camera_position.lock().unwrap();
         
@@ -55,7 +59,7 @@ impl RaytracerInner {
                 for j in 0..self.config.screen_height {
                     // Check for interrupt
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                        println!("Rendering interrupted");
+                        println!("Rendering interrupted after: {:?}", start_time.elapsed());
                         break 'outer;
                     }
                     
@@ -89,10 +93,14 @@ impl RaytracerInner {
                 });
                 
                 if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                    println!("Rendering interrupted");
+                    println!("Rendering interrupted after: {:?}", start_time.elapsed());
                 }
             });
         }
+        
+        // Log completion time
+        let duration = start_time.elapsed();
+        println!("Full render completed in: {:?}", duration);
     }
 
     fn render_helper(&self, i: u32, j: u32, camera_pos: Point) -> Spectrum {
@@ -235,6 +243,10 @@ impl RaytracerInner {
         // Reset interrupt flag
         self.interrupt.store(false, std::sync::atomic::Ordering::SeqCst);
         
+        // Start timing
+        let start_time = Instant::now();
+        println!("Starting debug render...");
+        
         // Get camera position once at the beginning
         let camera_pos = *self.camera_position.lock().unwrap();
         
@@ -244,7 +256,7 @@ impl RaytracerInner {
                 for j in 0..self.config.screen_height {
                     // Check for interrupt
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                        println!("Debug rendering interrupted");
+                        println!("Debug rendering interrupted after: {:?}", start_time.elapsed());
                         break 'outer;
                     }
                     
@@ -275,10 +287,14 @@ impl RaytracerInner {
                 });
                 
                 if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                    println!("Debug rendering interrupted");
+                    println!("Debug rendering interrupted after: {:?}", start_time.elapsed());
                 }
             });
         }
+        
+        // Log completion time
+        let duration = start_time.elapsed();
+        println!("Debug render completed in: {:?}", duration);
     }
 
     fn debug_render_helper(&self, i: u32, j: u32, camera_pos: Point) -> Spectrum {
@@ -371,7 +387,11 @@ impl Raytracer {
     pub fn render(&self) {
         let local_self = self.inner.clone();
         thread::spawn(move || {
+            let start = Instant::now();
+            println!("Starting render in thread...");
             local_self.render();
+            let duration = start.elapsed();
+            println!("Thread render took: {:?}", duration);
         });
     }
 }
