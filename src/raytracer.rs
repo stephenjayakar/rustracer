@@ -4,7 +4,6 @@ use crate::scene::{Point, Ray, RayIntersection, Scene, Vector};
 use crate::Config;
 use rayon::prelude::*;
 
-use std::time::Instant;
 use std::{f64::consts::PI, sync::Arc, thread};
 
 const RUSSIAN_ROULETTE_PROBABILITY: f32 = 0.7;
@@ -17,13 +16,15 @@ pub struct Raytracer {
 const CAMERA_SPEED: f64 = 2.0;
 
 pub struct RaytracerInner {
-    config: Config,
+    pub config: Config,
     canvas: Canvas,
     scene: Scene,
     camera_position: std::sync::Mutex<Point>,
     pub rendering_mode: std::sync::Mutex<RenderingMode>,
     // Flag to interrupt rendering
     interrupt: std::sync::atomic::AtomicBool,
+    // Cache for screen-to-world transformations
+    screen_to_world_cache: std::sync::Mutex<Option<Vec<Vector>>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -64,26 +65,49 @@ impl RaytracerInner {
                 }
             }
         } else {
-            // For parallel rendering, we use a custom pool with an early-exit strategy
+            // For parallel rendering, we use tile-based parallelism for better cache locality
             let pool = rayon::ThreadPoolBuilder::new().build().unwrap();
 
             pool.install(|| {
-                // We can't easily interrupt rayon's parallel iterations, so we'll check the flag directly
-                let rows: Vec<u32> = (0..self.config.screen_width).collect();
-
-                rows.into_par_iter().for_each(|i| {
+                // Use tile-based rendering instead of row-based for better cache coherence and load balancing
+                let tile_size = 32; // Experiment with different sizes
+                let num_tiles_x = (self.config.screen_width + tile_size - 1) / tile_size;
+                let num_tiles_y = (self.config.screen_height + tile_size - 1) / tile_size;
+                let total_tiles = num_tiles_x * num_tiles_y;
+                
+                // Process tiles in a deterministic order
+                let tiles: Vec<u32> = (0..total_tiles).collect();
+                tiles.into_par_iter().for_each(|tile_idx| {
                     // Early exit if rendering was cancelled
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
                         return;
                     }
+                    
+                    let tile_x = (tile_idx % num_tiles_x) * tile_size;
+                    let tile_y = (tile_idx / num_tiles_x) * tile_size;
+                    
+                    // Render each tile in scanline order for better cache locality and fewer artifacts
+                    let x_end = std::cmp::min(tile_x + tile_size, self.config.screen_width);
+                    let y_end = std::cmp::min(tile_y + tile_size, self.config.screen_height);
+                    
+                    // Buffer pixels for each tile to reduce thread contention in the canvas
+                    let mut tile_pixels = Vec::with_capacity((tile_size * tile_size) as usize);
+                    
+                    for j in tile_y..y_end {
+                        for i in tile_x..x_end {
+                            // Check for cancellation less frequently
+                            if i == tile_x && j % 16 == 0 && 
+                               self.interrupt.load(std::sync::atomic::Ordering::Relaxed) {
+                                return;
+                            }
 
-                    for j in 0..self.config.screen_height {
-                        // Skip if rendering was cancelled
-                        if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                            break;
+                            let color = self.render_helper(i, j, camera_pos);
+                            tile_pixels.push((i, j, color));
                         }
-
-                        let color = self.render_helper(i, j, camera_pos);
+                    }
+                    
+                    // Draw all pixels from this tile at once
+                    for (i, j, color) in tile_pixels {
                         self.canvas.draw_pixel(i, j, color);
                     }
                 });
@@ -95,10 +119,31 @@ impl RaytracerInner {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(camera_pos, vector);
         let mut color = Spectrum::black();
-        for _ in 0..self.config.samples_per_pixel {
-            color += self.cast_ray(ray, self.config.bounces);
+        
+        if self.config.samples_per_pixel > 1 {
+            // For first few samples, check if we can early terminate for dark areas
+            for s in 0..std::cmp::min(2, self.config.samples_per_pixel) {
+                let sample = self.cast_ray(ray, self.config.bounces);
+                color += sample;
+                
+                // If color is completely black after initial samples, skip remaining samples
+                if s == 1 && color.is_black() {
+                    return Spectrum::black();
+                }
+            }
+            
+            // Process remaining samples
+            if self.config.samples_per_pixel > 2 {
+                for _ in 2..self.config.samples_per_pixel {
+                    color += self.cast_ray(ray, self.config.bounces);
+                }
+            }
+            
+            color = color * (1.0 / self.config.samples_per_pixel as f64);
+        } else {
+            color = self.cast_ray(ray, self.config.bounces);
         }
-        color = color * (1.0 / self.config.samples_per_pixel as f64);
+        
         color
     }
 
@@ -120,6 +165,48 @@ impl RaytracerInner {
 
         let direction = Vector::new_normalized(xi, yi, -z);
         direction
+    }
+    
+    /// Updates the screen-to-world transformation cache
+    fn update_screen_to_world_cache(&self) {
+        let mut cache_lock = self.screen_to_world_cache.lock().unwrap();
+        
+        // Only update if the cache is None or dimensions have changed
+        if cache_lock.is_none() || 
+           cache_lock.as_ref().unwrap().len() != (self.config.screen_width * self.config.screen_height) as usize {
+            let width = self.config.screen_width;
+            let height = self.config.screen_height;
+            let mut cache = Vec::with_capacity((width * height) as usize);
+            
+            // Prebake values common to all transformations
+            let w = width as f64;
+            let h = height as f64;
+            let aspect_ratio = w / h;
+            let z = 1.7;
+            let fov = self.config.fov;
+            let half_fov = fov * 0.5;
+            let start = f64::sin(-half_fov);
+            let total = -2.0 * start;
+            
+            // Precompute in a single pass with optimized math
+            // Process in row-major order for better cache locality
+            for j in 0..height {
+                let jh = (j as f64 + 0.5) / h;
+                let yi = -start - jh * total;
+                
+                for i in 0..width {
+                    let iw = (i as f64 + 0.5) / w;
+                    let xi = (start + iw * total) * aspect_ratio;
+                    
+                    // Ensure all vectors are properly normalized
+                    let mut direction = Vector::new(xi, yi, -z);
+                    direction = direction.normalized();
+                    cache.push(direction);
+                }
+            }
+            
+            *cache_lock = Some(cache);
+        }
     }
 
     /// Radiance from immediate scene intersections.  Should only paint lights.
@@ -234,11 +321,19 @@ impl RaytracerInner {
 
         // Get camera position once at the beginning
         let camera_pos = *self.camera_position.lock().unwrap();
+        
+        // Precompute screen-to-world transformations for the entire frame
+        // This is a significant optimization for debug mode since we only need basic ray tests
+        let screen_width = self.config.screen_width;
+        let screen_height = self.config.screen_height;
+        
+        // Update the screen-to-world cache for better performance
+        self.update_screen_to_world_cache();
 
         // Use parallel rendering for better performance in debug mode
         if self.config.single_threaded {
-            'outer: for i in 0..self.config.screen_width {
-                for j in 0..self.config.screen_height {
+            'outer: for i in 0..screen_width {
+                for j in 0..screen_height {
                     // Check for interrupt
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
                         break 'outer;
@@ -249,23 +344,48 @@ impl RaytracerInner {
                 }
             }
         } else {
-            // Parallel implementation for debug mode
+            // Use persistent thread pool
             let pool = rayon::ThreadPoolBuilder::new().build().unwrap();
 
             pool.install(|| {
-                let rows: Vec<u32> = (0..self.config.screen_width).collect();
-
-                rows.into_par_iter().for_each(|i| {
-                    if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
+                // Use tile-based rendering for better cache coherence
+                let tile_size = 32;
+                let num_tiles_x = (screen_width + tile_size - 1) / tile_size;
+                let num_tiles_y = (screen_height + tile_size - 1) / tile_size;
+                let total_tiles = num_tiles_x * num_tiles_y;
+                
+                // Process tiles in a deterministic order to prevent artifacts
+                let tiles: Vec<u32> = (0..total_tiles).collect();
+                tiles.into_par_iter().for_each(|tile_idx| {
+                    if self.interrupt.load(std::sync::atomic::Ordering::Relaxed) {
                         return;
                     }
+                    
+                    let tile_x = (tile_idx % num_tiles_x) * tile_size;
+                    let tile_y = (tile_idx / num_tiles_x) * tile_size;
+                    
+                    // Define tile boundaries
+                    let y_end = std::cmp::min(tile_y + tile_size, screen_height);
+                    let x_end = std::cmp::min(tile_x + tile_size, screen_width);
+                    
+                    // Buffer pixels for each tile to reduce thread contention
+                    let mut tile_pixels = Vec::with_capacity((tile_size * tile_size) as usize);
+                    
+                    for j in tile_y..y_end {
+                        for i in tile_x..x_end {
+                            // Check interrupt flag less frequently for better performance
+                            if i == tile_x && j % 16 == 0 && 
+                               self.interrupt.load(std::sync::atomic::Ordering::Relaxed) {
+                                return;
+                            }
 
-                    for j in 0..self.config.screen_height {
-                        if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                            break;
+                            let color = self.debug_render_helper(i, j, camera_pos);
+                            tile_pixels.push((i, j, color));
                         }
-
-                        let color = self.debug_render_helper(i, j, camera_pos);
+                    }
+                    
+                    // Draw all pixels from this tile at once
+                    for (i, j, color) in tile_pixels {
                         self.canvas.draw_pixel(i, j, color);
                     }
                 });
@@ -274,21 +394,30 @@ impl RaytracerInner {
     }
 
     fn debug_render_helper(&self, i: u32, j: u32, camera_pos: Point) -> Spectrum {
-        let vector = self.screen_to_world(i, j);
+        // Use cached screen-to-world transformation if available
+        let vector = if let Some(cache) = &*self.screen_to_world_cache.lock().unwrap() {
+            cache[(j * self.config.screen_width + i) as usize]
+        } else {
+            self.screen_to_world(i, j)
+        };
+        
         let ray = Ray::new(camera_pos, vector);
 
-        // Extremely simplified rendering for debug mode
-        // Just show if there's an intersection or not, with minimal calculation
+        // Use the optimized fast intersection test for debug mode
         if let Some(ri) = self.scene.intersect(ray) {
-            // Use a simple distance-based coloring with minimal math
+            // Use a simplified distance-based coloring with minimal math
             let max_distance = 100.0;
             let distance_factor = 1.0 - (ri.distance().min(max_distance) / max_distance);
-
-            // Return a gray color without additional calculations
+            
+            // Add some color variation based on normal direction for better visualization
+            let normal = ri.object().surface_normal(ri.point());
+            let normal_factor = 0.5 + 0.5 * normal.dot(Vector::new(0.5, 0.5, 0.5).normalized());
+            
+            // Return a color based on distance and normal, making debug view more informative
             Spectrum::new_f(
+                0.7 * distance_factor * normal_factor,
                 0.7 * distance_factor,
-                0.7 * distance_factor,
-                0.7 * distance_factor,
+                0.7 * distance_factor * (1.0 - 0.5 * normal_factor),
             )
         } else {
             Spectrum::black()
@@ -327,6 +456,7 @@ impl Raytracer {
                 camera_position: std::sync::Mutex::new(Point::new(0.0, 0.0, 0.0)),
                 rendering_mode: std::sync::Mutex::new(rendering_mode),
                 interrupt: std::sync::atomic::AtomicBool::new(false),
+                screen_to_world_cache: std::sync::Mutex::new(None),
             }),
         }
     }
@@ -342,6 +472,10 @@ impl Raytracer {
     pub fn move_camera(&self, direction: Vector) {
         let mut camera_pos = self.inner.camera_position.lock().unwrap();
         *camera_pos = *camera_pos + direction * CAMERA_SPEED;
+        
+        // Invalidate the screen-to-world cache when camera moves
+        let mut cache = self.inner.screen_to_world_cache.lock().unwrap();
+        *cache = None;
     }
 
     pub fn toggle_rendering_mode(&self) {

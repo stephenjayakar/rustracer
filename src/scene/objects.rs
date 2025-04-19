@@ -34,49 +34,72 @@ impl Object {
     pub fn intersect(&self, ray: &Ray) -> Option<f64> {
         match self {
             Object::Triangle(triangle) => {
+                // Implement Möller-Trumbore algorithm for faster triangle intersection
                 let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
-                let direction = ray.direction;
                 let e1 = p2 - p1;
                 let e2 = p3 - p1;
+                let h = ray.direction.cross(e2);
+                let a = e1.dot(h);
+                
+                // Check if ray is parallel to triangle
+                if a.abs() < EPS {
+                    return None;
+                }
+                
+                let f = 1.0 / a;
                 let s = ray.origin - p1;
-                let s1 = direction.cross(e2);
-                let s2 = s.cross(e1);
-                let scalar = 1.0 / s1.dot(e1);
-                let (t, b1, b2) = (
-                    s2.dot(e2) * scalar,
-                    s1.dot(s) * scalar,
-                    s2.dot(direction) * scalar,
-                );
-                return if b1 < 0.0
-                    || b2 < 0.0
-                    || b1 > 1.0
-                    || b2 > 1.0
-                    || b1 + b2 > 1.0 + EPS
-                    || t < EPS
-                {
-                    None
-                } else {
+                let u = f * s.dot(h);
+                
+                if u < 0.0 || u > 1.0 {
+                    return None;
+                }
+                
+                let q = s.cross(e1);
+                let v = f * ray.direction.dot(q);
+                
+                if v < 0.0 || u + v > 1.0 {
+                    return None;
+                }
+                
+                let t = f * e2.dot(q);
+                if t > EPS {
                     Some(t)
-                };
+                } else {
+                    None
+                }
             }
             Object::Sphere(sphere) => {
+                // Optimized sphere intersection with fewer calculations
                 let l: Vector = sphere.center - ray.origin;
                 let adj = l.dot(ray.direction);
+                
+                // Early exit for rays pointing away from sphere
+                if adj < 0.0 && l.dot(l) > sphere.radius * sphere.radius {
+                    return None;
+                }
+                
                 let d2 = l.dot(l) - (adj * adj);
                 let radius2 = sphere.radius * sphere.radius;
+                
                 if d2 > radius2 {
                     return None;
                 }
+                
                 let thc = (radius2 - d2).sqrt();
                 let t0 = adj - thc;
                 let t1 = adj + thc;
 
-                if t0 < 0.0 && t1 < 0.0 {
+                // Fast check: if both intersection points are behind us, there's no hit
+                if t1 < 0.0 {
                     return None;
                 }
-
-                let distance = if t0 < t1 { t0 } else { t1 };
-                Some(distance)
+                
+                // Return nearest intersection point in front of the ray
+                if t0 < 0.0 {
+                    Some(t1) // Only t1 is valid (we're inside the sphere)
+                } else {
+                    Some(t0) // Both valid, t0 is closer
+                }
             }
         }
     }
@@ -115,7 +138,7 @@ impl Object {
         }
     }
 
-    pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
+    pub fn bsdf(&self, _wi: Vector, _wo: Vector) -> Spectrum {
         let material = self.material();
         match material.bsdf {
             BSDF::Diffuse => material.reflectance * (1.0 / PI),

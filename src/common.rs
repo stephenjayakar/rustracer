@@ -40,6 +40,15 @@ impl Spectrum {
         let color = self.r + self.g + self.b;
         color <= 0.0 + EPS as f64
     }
+    
+    pub fn is_nearly_black(&self) -> bool {
+        let threshold = 0.01;
+        self.r <= threshold && self.g <= threshold && self.b <= threshold
+    }
+    
+    pub fn max_component(&self) -> f64 {
+        f64::max(self.r, f64::max(self.g, self.b))
+    }
 
     fn to_u8(val: f64) -> u8 {
         // maybe make this debug somehow?

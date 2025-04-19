@@ -36,6 +36,7 @@ pub struct Config {
     high_dpi: bool,
     image_mode: bool,
     single_threaded: bool,
+    pub debug_quality: u32, // Quality setting for debug rendering
 }
 
 impl Config {
@@ -108,6 +109,7 @@ impl Config {
             high_dpi,
             image_mode,
             single_threaded,
+            debug_quality: 1, // Default quality setting
         }
     }
 }

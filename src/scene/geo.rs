@@ -148,7 +148,10 @@ impl Vector {
     }
 
     pub fn dot(&self, other_vector: Vector) -> f64 {
-        self.v.dot(&other_vector.v)
+        // Unrolled dot product for better performance
+        let (x1, y1, z1) = (self.x(), self.y(), self.z());
+        let (x2, y2, z2) = (other_vector.x(), other_vector.y(), other_vector.z());
+        x1 * x2 + y1 * y2 + z1 * z2
     }
 
     pub fn cross(&self, other_vector: Vector) -> Vector {

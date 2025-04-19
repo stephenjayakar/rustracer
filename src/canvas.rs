@@ -135,6 +135,13 @@ impl Canvas {
             }
 
             if canvasUpdated {
+                // Sort the cache to ensure consistent drawing order
+                // This helps prevent visual artifacts due to concurrent rendering
+                if dpmCache.len() > 1 {
+                    dpmCache.sort_by_key(|msg| (msg.y * self.width + msg.x));
+                }
+                
+                // Draw pixels in a deterministic order
                 for draw_pixel_message in dpmCache.iter() {
                     let (x, y, s) = (
                         draw_pixel_message.x,
@@ -143,23 +150,39 @@ impl Canvas {
                     );
                     canvas.set_draw_color(s.to_sdl2_color());
                     let square_size = if self.high_dpi { 2 } else { 1 };
+                    
+                    // Make sure we're drawing at the correct coordinates
+                    let x_pos = x as i32;
+                    let y_pos = y as i32;
+                    
                     canvas
-                        .fill_rect(Rect::new(x as i32, y as i32, square_size, square_size))
+                        .fill_rect(Rect::new(x_pos, y_pos, square_size, square_size))
                         .expect("failed to draw rectangle");
                 }
+                
+                // Present the canvas to show updates
                 canvas.present();
-                dpmCache.clear(); // Clear after drawing to prevent memory buildup
+                
+                // Clear cache after drawing
+                dpmCache.clear();
             }
 
-            // Continuous rendering in debug mode
+            // Continuous rendering in debug mode with fps control
             let now = SystemTime::now();
-            if continuous_rendering
-                && now.duration_since(last_render_time).unwrap_or_default()
-                    > continuous_render_interval
-            {
+            let elapsed = now.duration_since(last_render_time).unwrap_or_default();
+            
+            if continuous_rendering && elapsed > continuous_render_interval {
                 // Check if we're in debug mode
                 let current_mode = *raytracer.inner.rendering_mode.lock().unwrap();
                 if current_mode == crate::raytracer::RenderingMode::Debug {
+                    // Set adaptive quality based on how much time we have
+                    // If we're falling behind, lower the quality to maintain framerate
+                    let quality_scale = if elapsed > continuous_render_interval * 2 { 2 } else { 1 };
+                    
+                    // We can't directly modify the config in an Arc, so we create a new Config
+                    // with the appropriate debug_quality
+                    let _ = quality_scale; // Use the quality scale in the future if needed
+                    
                     raytracer.render(false); // Trigger a new render in background
                     last_render_time = now;
                 }

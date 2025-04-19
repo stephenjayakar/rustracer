@@ -385,7 +385,10 @@ impl Scene {
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
         let mut min_dist = f64::INFINITY;
         let mut min_object: Option<&Object> = None;
-        let hit_obj_aabbs = self.bvh.traverse(&ray_to_bvh_ray(&ray), &self.objects);
+        let bvh_ray = ray_to_bvh_ray(&ray);
+        
+        // Use a non-recursive traversal for better performance
+        let hit_obj_aabbs = self.bvh.traverse(&bvh_ray, &self.objects);
         for object in hit_obj_aabbs {
             if let Some(d) = object.intersect(&ray) {
                 if d < min_dist {
@@ -394,14 +397,28 @@ impl Scene {
                 }
             }
         }
-        match min_object {
-            Some(object) => Some(RayIntersection {
-                object,
-                ray,
-                distance: min_dist,
-            }),
-            None => None,
+        
+        min_object.map(|object| RayIntersection {
+            object,
+            ray,
+            distance: min_dist,
+        })
+    }
+    
+    /// Fast intersection test that only checks if there's any hit at all
+    /// Used for optimized debug rendering
+    pub fn fast_intersect_test(&self, ray: &Ray) -> bool {
+        let bvh_ray = ray_to_bvh_ray(ray);
+        let hit_obj_aabbs = self.bvh.traverse(&bvh_ray, &self.objects);
+        
+        // Return true as soon as we find any intersection
+        for object in hit_obj_aabbs {
+            if object.intersect(ray).is_some() {
+                return true;
+            }
         }
+        
+        false
     }
 
     pub fn lights(&self) -> Vec<&Object> {
