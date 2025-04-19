@@ -21,13 +21,13 @@ pub struct RaytracerInner {
     canvas: Canvas,
     scene: Scene,
     camera_position: std::sync::Mutex<Point>,
-    rendering_mode: std::sync::Mutex<RenderingMode>,
+    pub rendering_mode: std::sync::Mutex<RenderingMode>,
     // Flag to interrupt rendering
     interrupt: std::sync::atomic::AtomicBool,
 }
 
-#[derive(Clone, Copy)]
-enum RenderingMode {
+#[derive(Clone, Copy, PartialEq)]
+pub enum RenderingMode {
     Debug,
     Full,
 }
@@ -42,27 +42,23 @@ impl RaytracerInner {
             RenderingMode::Debug => self.debug_render(),
         }
     }
-    
+
     fn do_render(&self) {
         // Reset interrupt flag
-        self.interrupt.store(false, std::sync::atomic::Ordering::SeqCst);
-        
-        // Start timing
-        let start_time = Instant::now();
-        println!("Starting full render...");
-        
+        self.interrupt
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+
         // Get camera position once at the beginning
         let camera_pos = *self.camera_position.lock().unwrap();
-        
+
         if self.config.single_threaded {
             'outer: for i in 0..self.config.screen_width {
                 for j in 0..self.config.screen_height {
                     // Check for interrupt
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                        println!("Rendering interrupted after: {:?}", start_time.elapsed());
                         break 'outer;
                     }
-                    
+
                     let color = self.render_helper(i, j, camera_pos);
                     self.canvas.draw_pixel(i, j, color);
                 }
@@ -70,37 +66,29 @@ impl RaytracerInner {
         } else {
             // For parallel rendering, we use a custom pool with an early-exit strategy
             let pool = rayon::ThreadPoolBuilder::new().build().unwrap();
-            
+
             pool.install(|| {
                 // We can't easily interrupt rayon's parallel iterations, so we'll check the flag directly
                 let rows: Vec<u32> = (0..self.config.screen_width).collect();
-                
+
                 rows.into_par_iter().for_each(|i| {
                     // Early exit if rendering was cancelled
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
                         return;
                     }
-                    
+
                     for j in 0..self.config.screen_height {
                         // Skip if rendering was cancelled
                         if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
                             break;
                         }
-                        
+
                         let color = self.render_helper(i, j, camera_pos);
                         self.canvas.draw_pixel(i, j, color);
                     }
                 });
-                
-                if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                    println!("Rendering interrupted after: {:?}", start_time.elapsed());
-                }
             });
         }
-        
-        // Log completion time
-        let duration = start_time.elapsed();
-        println!("Full render completed in: {:?}", duration);
     }
 
     fn render_helper(&self, i: u32, j: u32, camera_pos: Point) -> Spectrum {
@@ -241,25 +229,21 @@ impl RaytracerInner {
     /// Renderer that paints grey for intersections, and black otherwise
     pub fn debug_render(&self) {
         // Reset interrupt flag
-        self.interrupt.store(false, std::sync::atomic::Ordering::SeqCst);
-        
-        // Start timing
-        let start_time = Instant::now();
-        println!("Starting debug render...");
-        
+        self.interrupt
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+
         // Get camera position once at the beginning
         let camera_pos = *self.camera_position.lock().unwrap();
-        
+
         // Use parallel rendering for better performance in debug mode
         if self.config.single_threaded {
             'outer: for i in 0..self.config.screen_width {
                 for j in 0..self.config.screen_height {
                     // Check for interrupt
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                        println!("Debug rendering interrupted after: {:?}", start_time.elapsed());
                         break 'outer;
                     }
-                    
+
                     let color = self.debug_render_helper(i, j, camera_pos);
                     self.canvas.draw_pixel(i, j, color);
                 }
@@ -267,49 +251,45 @@ impl RaytracerInner {
         } else {
             // Parallel implementation for debug mode
             let pool = rayon::ThreadPoolBuilder::new().build().unwrap();
-            
+
             pool.install(|| {
                 let rows: Vec<u32> = (0..self.config.screen_width).collect();
-                
+
                 rows.into_par_iter().for_each(|i| {
                     if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
                         return;
                     }
-                    
+
                     for j in 0..self.config.screen_height {
                         if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
                             break;
                         }
-                        
+
                         let color = self.debug_render_helper(i, j, camera_pos);
                         self.canvas.draw_pixel(i, j, color);
                     }
                 });
-                
-                if self.interrupt.load(std::sync::atomic::Ordering::SeqCst) {
-                    println!("Debug rendering interrupted after: {:?}", start_time.elapsed());
-                }
             });
         }
-        
-        // Log completion time
-        let duration = start_time.elapsed();
-        println!("Debug render completed in: {:?}", duration);
     }
 
     fn debug_render_helper(&self, i: u32, j: u32, camera_pos: Point) -> Spectrum {
         let vector = self.screen_to_world(i, j);
         let ray = Ray::new(camera_pos, vector);
-        
+
         // Extremely simplified rendering for debug mode
         // Just show if there's an intersection or not, with minimal calculation
         if let Some(ri) = self.scene.intersect(ray) {
             // Use a simple distance-based coloring with minimal math
             let max_distance = 100.0;
             let distance_factor = 1.0 - (ri.distance().min(max_distance) / max_distance);
-            
+
             // Return a gray color without additional calculations
-            Spectrum::new_f(0.7 * distance_factor, 0.7 * distance_factor, 0.7 * distance_factor)
+            Spectrum::new_f(
+                0.7 * distance_factor,
+                0.7 * distance_factor,
+                0.7 * distance_factor,
+            )
         } else {
             Spectrum::black()
         }
@@ -335,10 +315,10 @@ impl Raytracer {
             config.high_dpi,
             config.image_mode,
         );
-        
+
         // Always start in debug mode for navigation
         let rendering_mode = RenderingMode::Debug;
-        
+
         Raytracer {
             inner: Arc::new(RaytracerInner {
                 config,
@@ -352,25 +332,22 @@ impl Raytracer {
     }
 
     pub fn start(&self) {
-        let local_self = self.inner.clone();
-        thread::spawn(move || {
-            let start = Instant::now();
-            local_self.render();
-            let duration = start.elapsed();
-            println!("Rendering took: {:?}", duration);
-        });
+        // Initial render in a background thread
+        self.render(false);
+
+        // Start the GUI
         self.inner.canvas.start(self.inner.clone());
     }
-    
+
     pub fn move_camera(&self, direction: Vector) {
         let mut camera_pos = self.inner.camera_position.lock().unwrap();
         *camera_pos = *camera_pos + direction * CAMERA_SPEED;
     }
-    
+
     pub fn toggle_rendering_mode(&self) {
         // First interrupt any ongoing render
         self.interrupt_render();
-        
+
         // Then toggle the mode
         let mut mode = self.inner.rendering_mode.lock().unwrap();
         *mode = match *mode {
@@ -378,20 +355,28 @@ impl Raytracer {
             RenderingMode::Full => RenderingMode::Debug,
         };
     }
-    
+
     pub fn interrupt_render(&self) {
         // Set the interrupt flag to true
-        self.inner.interrupt.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.inner
+            .interrupt
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
-    
-    pub fn render(&self) {
+
+    /// Triggers a render, with option to wait for completion
+    /// Passing wait_for_completion=true will block until rendering is done,
+    /// which is useful for full renders that shouldn't be interrupted
+    pub fn render(&self, wait_for_completion: bool) {
         let local_self = self.inner.clone();
-        thread::spawn(move || {
-            let start = Instant::now();
-            println!("Starting render in thread...");
+
+        if wait_for_completion {
+            // Run directly in this thread and wait for completion
             local_self.render();
-            let duration = start.elapsed();
-            println!("Thread render took: {:?}", duration);
-        });
+        } else {
+            // Run in a background thread
+            thread::spawn(move || {
+                local_self.render();
+            });
+        }
     }
 }

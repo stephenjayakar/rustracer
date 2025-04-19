@@ -97,8 +97,10 @@ impl Canvas {
     /// Starts a new canvas context that takes over the main thread.
     pub fn start_gui(&self, raytracer_inner: Arc<crate::raytracer::RaytracerInner>) {
         // Create a Raytracer from the inner reference
-        let raytracer = crate::raytracer::Raytracer { inner: raytracer_inner };
-        
+        let raytracer = crate::raytracer::Raytracer {
+            inner: raytracer_inner,
+        };
+
         let sdl_context = sdl2::init().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let video_subsystem = sdl_context.video().unwrap();
@@ -117,6 +119,11 @@ impl Canvas {
         canvas.clear();
 
         let mut dpmCache = Vec::<DrawPixelMessage>::new();
+
+        // Track last render time for continuous rendering in debug mode
+        let mut last_render_time = SystemTime::now();
+        let continuous_render_interval = Duration::from_millis(50); // 20 FPS for smooth navigation
+        let mut continuous_rendering = true; // Start with continuous rendering enabled
 
         // canvas loop
         'running: loop {
@@ -141,8 +148,23 @@ impl Canvas {
                         .expect("failed to draw rectangle");
                 }
                 canvas.present();
+                dpmCache.clear(); // Clear after drawing to prevent memory buildup
             }
-            
+
+            // Continuous rendering in debug mode
+            let now = SystemTime::now();
+            if continuous_rendering
+                && now.duration_since(last_render_time).unwrap_or_default()
+                    > continuous_render_interval
+            {
+                // Check if we're in debug mode
+                let current_mode = *raytracer.inner.rendering_mode.lock().unwrap();
+                if current_mode == crate::raytracer::RenderingMode::Debug {
+                    raytracer.render(false); // Trigger a new render in background
+                    last_render_time = now;
+                }
+            }
+
             // process events
             for event in event_pump.poll_iter() {
                 match event {
@@ -151,7 +173,7 @@ impl Canvas {
                         keycode: Some(Keycode::Escape),
                         ..
                     } => break 'running,
-                    
+
                     // Camera movement with WASD
                     Event::KeyDown {
                         keycode: Some(Keycode::W),
@@ -161,8 +183,8 @@ impl Canvas {
                         raytracer.interrupt_render();
                         // Move forward (negative Z)
                         raytracer.move_camera(crate::scene::Vector::new(0.0, 0.0, -1.0));
-                        raytracer.render();
-                    },
+                        raytracer.render(false);
+                    }
                     Event::KeyDown {
                         keycode: Some(Keycode::S),
                         ..
@@ -171,8 +193,8 @@ impl Canvas {
                         raytracer.interrupt_render();
                         // Move backward (positive Z)
                         raytracer.move_camera(crate::scene::Vector::new(0.0, 0.0, 1.0));
-                        raytracer.render();
-                    },
+                        raytracer.render(false);
+                    }
                     Event::KeyDown {
                         keycode: Some(Keycode::A),
                         ..
@@ -181,8 +203,8 @@ impl Canvas {
                         raytracer.interrupt_render();
                         // Move left (negative X)
                         raytracer.move_camera(crate::scene::Vector::new(-1.0, 0.0, 0.0));
-                        raytracer.render();
-                    },
+                        raytracer.render(false);
+                    }
                     Event::KeyDown {
                         keycode: Some(Keycode::D),
                         ..
@@ -191,8 +213,8 @@ impl Canvas {
                         raytracer.interrupt_render();
                         // Move right (positive X)
                         raytracer.move_camera(crate::scene::Vector::new(1.0, 0.0, 0.0));
-                        raytracer.render();
-                    },
+                        raytracer.render(false);
+                    }
                     Event::KeyDown {
                         keycode: Some(Keycode::Q),
                         ..
@@ -201,8 +223,8 @@ impl Canvas {
                         raytracer.interrupt_render();
                         // Move up (positive Y)
                         raytracer.move_camera(crate::scene::Vector::new(0.0, 1.0, 0.0));
-                        raytracer.render();
-                    },
+                        raytracer.render(false);
+                    }
                     Event::KeyDown {
                         keycode: Some(Keycode::E),
                         ..
@@ -211,9 +233,9 @@ impl Canvas {
                         raytracer.interrupt_render();
                         // Move down (negative Y)
                         raytracer.move_camera(crate::scene::Vector::new(0.0, -1.0, 0.0));
-                        raytracer.render();
-                    },
-                    
+                        raytracer.render(false);
+                    }
+
                     // Toggle rendering mode with R
                     Event::KeyDown {
                         keycode: Some(Keycode::R),
@@ -221,16 +243,37 @@ impl Canvas {
                     } => {
                         // This will interrupt any current render and toggle the mode
                         raytracer.toggle_rendering_mode();
+
+                        // Get current mode after toggling
+                        let current_mode = *raytracer.inner.rendering_mode.lock().unwrap();
+
+                        // For Full renders, wait for completion to ensure we don't interrupt it
+                        // For Debug renders, do it in the background
+                        let wait_for_completion =
+                            current_mode == crate::raytracer::RenderingMode::Full;
+
                         // Start a new render with the new mode
-                        raytracer.render();
-                    },
-                    
+                        raytracer.render(wait_for_completion);
+                    }
+
+                    // Toggle continuous rendering with C
+                    Event::KeyDown {
+                        keycode: Some(Keycode::C),
+                        ..
+                    } => {
+                        continuous_rendering = !continuous_rendering;
+                        println!(
+                            "Continuous rendering: {}",
+                            if continuous_rendering { "ON" } else { "OFF" }
+                        );
+                    }
+
                     Event::KeyDown {
                         keycode: Some(Keycode::P),
                         ..
                     } => {
                         canvas.present();
-                    },
+                    }
                     Event::MouseButtonDown { x, y, .. } => println!(
                         "Mouse button down at coordinates ({}, {})",
                         x * divider as i32,
