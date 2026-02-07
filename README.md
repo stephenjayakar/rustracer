@@ -19,7 +19,7 @@ make sure you have `rust` :Z
 ## Running with GUI
 
 ```sh
-cargo run --release --features=gui -- --high-dpi
+cargo run --release -- --high-dpi
 ```
 
 ## Mac OSX

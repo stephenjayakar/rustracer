@@ -11,6 +11,7 @@ use clap::{App, Arg};
 
 mod canvas;
 mod common;
+mod gui;
 mod raytracer;
 mod scene;
 
