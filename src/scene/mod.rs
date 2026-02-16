@@ -1,4 +1,4 @@
-use bvh::bvh::BVH;
+use bvh::bvh::{BVHNode, BVH};
 
 mod geo;
 mod objects;
@@ -8,6 +8,14 @@ use objects::{Material, Object, Sphere, Triangle, BSDF};
 
 use crate::common::{Spectrum, EPS};
 
+use std::cell::RefCell;
+
+// Thread-local reusable stack for BVH traversal to avoid per-ray allocations
+thread_local! {
+    static BVH_STACK: RefCell<Vec<usize>> = RefCell::new(Vec::with_capacity(64));
+    static BVH_SHADOW_STACK: RefCell<Vec<usize>> = RefCell::new(Vec::with_capacity(64));
+}
+
 /// The Scene is static. Please don't change it unless you update the acceleration structures!
 pub struct Scene {
     objects: Vec<Object>,
@@ -16,37 +24,53 @@ pub struct Scene {
 }
 
 pub struct RayIntersection<'a> {
-    distance: f64,
+    distance: f32,
     object: &'a Object,
     ray: Ray,
 }
 
 impl<'a> RayIntersection<'a> {
-    pub fn distance(&self) -> f64 {
+    #[inline(always)]
+    fn new(object: &'a Object, ray: Ray, distance: f32) -> Self {
+        RayIntersection {
+            distance,
+            object,
+            ray,
+        }
+    }
+
+    #[inline(always)]
+    pub fn distance(&self) -> f32 {
         self.distance
     }
 
+    #[inline(always)]
     pub fn object(&self) -> &'a Object {
         self.object
     }
 
+    #[inline(always)]
     pub fn ray(&self) -> &Ray {
         &self.ray
     }
 
+    #[inline(always)]
     pub fn point(&self) -> Point {
-        let min_dist = self.distance() - EPS;
-        let ray = self.ray();
-        let scaled_vector = ray.direction * min_dist;
-        let intersection_point = ray.origin + scaled_vector;
-        intersection_point
+        let min_dist = self.distance - EPS;
+        let scaled_vector = self.ray.direction * min_dist;
+        self.ray.origin + scaled_vector
+    }
+
+    #[inline(always)]
+    pub fn normal(&self) -> Vector {
+        self.object.surface_normal(self.point())
     }
 }
 
 struct CornellBox {
     triangles: Vec<Triangle>,
-    half_length: f64,
-    box_z_offset: f64,
+    half_length: f32,
+    box_z_offset: f32,
     red_diffuse_material: Material,
     green_diffuse_material: Material,
     blue_diffuse_material: Material,
@@ -108,7 +132,7 @@ impl Scene {
         Scene::new(vec![triangle], vec![light])
     }
 
-    fn load_obj(filename: &str, scale: f64, offset: Point, material: Material) -> Vec<Triangle> {
+    fn load_obj(filename: &str, scale: f32, offset: Point, material: Material) -> Vec<Triangle> {
         let (models, _) = tobj::load_obj(filename, true).unwrap();
         let m = &models[0];
         let mesh = &m.mesh;
@@ -116,9 +140,9 @@ impl Scene {
         let points: Vec<Point> = (0..mesh.positions.len() / 3)
             .map(|v| {
                 let v = Vector::new(
-                    mesh.positions[3 * v].into(),
-                    mesh.positions[3 * v + 1].into(),
-                    mesh.positions[3 * v + 2].into(),
+                    mesh.positions[3 * v],
+                    mesh.positions[3 * v + 1],
+                    mesh.positions[3 * v + 2],
                 );
                 offset + (v * scale)
             })
@@ -127,12 +151,11 @@ impl Scene {
             Some(
                 (0..mesh.positions.len() / 3)
                     .map(|i| {
-                        let v = Vector::new(
-                            mesh.normals[3 * i].into(),
-                            mesh.normals[3 * i + 1].into(),
-                            mesh.normals[3 * i + 2].into(),
-                        );
-                        v
+                        Vector::new(
+                            mesh.normals[3 * i],
+                            mesh.normals[3 * i + 1],
+                            mesh.normals[3 * i + 2],
+                        )
                     })
                     .collect(),
             )
@@ -241,8 +264,8 @@ impl Scene {
     }
 
     fn cornell_box() -> CornellBox {
-        let half_length = 20.0;
-        let box_z_offset = -48.0;
+        let half_length: f32 = 20.0;
+        let box_z_offset: f32 = -48.0;
         let red_diffuse_material = Material::new(BSDF::Diffuse, Spectrum::red(), Spectrum::black());
         let blue_diffuse_material =
             Material::new(BSDF::Diffuse, Spectrum::blue(), Spectrum::black());
@@ -252,8 +275,7 @@ impl Scene {
             Material::new(BSDF::Diffuse, Spectrum::grey(), Spectrum::black());
         let white_light_material =
             Material::new(BSDF::Diffuse, Spectrum::black(), Spectrum::white());
-        let light_radius = 7.0;
-        // insert the light at the top of the scene, halfway through the triangle
+        let light_radius: f32 = 7.0;
         let sphere_light = Sphere::new(
             Point::new(
                 0.0,
@@ -277,8 +299,6 @@ impl Scene {
         let p9 = Point::new(-half_length, half_length, z);
         let p10 = Point::new(half_length, half_length, z);
         let p11 = Point::new(half_length, half_length, 1.0);
-        // let p12 = Point::new(-half_length, half_length, 1.0);
-        // let p13 = Point::new(half_length, half_length, 1.0);
 
         let triangles = vec![
             // bottom wall
@@ -380,48 +400,113 @@ impl Scene {
         Scene::new(triangles, spheres)
     }
 
-    /// Intersects the scene with the given ray and takes ownership of it,
-    /// in order to populate it in the intersection object without copying.
+    /// Intersects the scene with the given ray.
+    /// Iterative BVH traversal with inline intersection testing.
+    #[inline]
     pub fn intersect(&self, ray: Ray) -> Option<RayIntersection> {
-        let mut min_dist = f64::INFINITY;
-        let mut min_object: Option<&Object> = None;
-        let hit_obj_aabbs = self.bvh.traverse(&ray_to_bvh_ray(&ray), &self.objects);
-        for object in hit_obj_aabbs {
-            if let Some(d) = object.intersect(&ray) {
-                if d < min_dist {
-                    min_dist = d;
-                    min_object = Some(object);
+        let bvh_ray = ray_to_bvh_ray(&ray);
+        let nodes = &self.bvh.nodes;
+
+        BVH_STACK.with(|cell| {
+            let mut stack = cell.borrow_mut();
+            stack.clear();
+            stack.push(0);
+
+            let mut min_dist = f32::INFINITY;
+            let mut min_object: Option<&Object> = None;
+
+            while let Some(node_index) = stack.pop() {
+                match nodes[node_index] {
+                    BVHNode::Node {
+                        ref child_l_aabb,
+                        child_l_index,
+                        ref child_r_aabb,
+                        child_r_index,
+                        ..
+                    } => {
+                        if bvh_ray.intersects_aabb(child_l_aabb) {
+                            stack.push(child_l_index);
+                        }
+                        if bvh_ray.intersects_aabb(child_r_aabb) {
+                            stack.push(child_r_index);
+                        }
+                    }
+                    BVHNode::Leaf { shape_index, .. } => {
+                        let object = &self.objects[shape_index];
+                        if let Some(d) = object.intersect(&ray) {
+                            if d < min_dist {
+                                min_dist = d;
+                                min_object = Some(object);
+                            }
+                        }
+                    }
                 }
             }
-        }
-        match min_object {
-            Some(object) => Some(RayIntersection {
-                object,
-                ray,
-                distance: min_dist,
-            }),
-            None => None,
-        }
+            min_object.map(|object| RayIntersection::new(object, ray, min_dist))
+        })
     }
 
-    pub fn lights(&self) -> Vec<&Object> {
-        self.light_indexes
-            .iter()
-            .map(|i| self.objects.get(*i).unwrap())
-            .collect()
+    /// Tests if any object blocks the ray before `max_dist`.
+    /// Iterative BVH traversal with early exit.
+    #[inline]
+    pub fn is_occluded(&self, ray: &Ray, max_dist: f32) -> bool {
+        let bvh_ray = ray_to_bvh_ray(ray);
+        let nodes = &self.bvh.nodes;
+
+        BVH_SHADOW_STACK.with(|cell| {
+            let mut stack = cell.borrow_mut();
+            stack.clear();
+            stack.push(0);
+
+            while let Some(node_index) = stack.pop() {
+                match nodes[node_index] {
+                    BVHNode::Node {
+                        ref child_l_aabb,
+                        child_l_index,
+                        ref child_r_aabb,
+                        child_r_index,
+                        ..
+                    } => {
+                        if bvh_ray.intersects_aabb(child_l_aabb) {
+                            stack.push(child_l_index);
+                        }
+                        if bvh_ray.intersects_aabb(child_r_aabb) {
+                            stack.push(child_r_index);
+                        }
+                    }
+                    BVHNode::Leaf { shape_index, .. } => {
+                        let object = &self.objects[shape_index];
+                        if let Some(d) = object.intersect(ray) {
+                            if d > 0.0 && d < max_dist {
+                                if object.material().emittance.is_black() {
+                                    return true; // early exit - found a blocker
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            false
+        })
+    }
+
+    /// Returns light objects. Returns a slice reference to avoid allocation.
+    #[inline]
+    pub fn light_indexes(&self) -> &[usize] {
+        &self.light_indexes
+    }
+
+    #[inline]
+    pub fn get_object(&self, index: usize) -> &Object {
+        &self.objects[index]
     }
 }
 
+#[inline(always)]
 pub fn ray_to_bvh_ray(ray: &Ray) -> bvh::ray::Ray {
-    let origin = bvh::nalgebra::Point3::new(
-        ray.origin.x() as f32,
-        ray.origin.y() as f32,
-        ray.origin.z() as f32,
-    );
-    let direction = bvh::nalgebra::Vector3::new(
-        ray.direction.x() as f32,
-        ray.direction.y() as f32,
-        ray.direction.z() as f32,
-    );
+    // Now a simple copy since we're already f32
+    let origin = bvh::nalgebra::Point3::new(ray.origin.x(), ray.origin.y(), ray.origin.z());
+    let direction =
+        bvh::nalgebra::Vector3::new(ray.direction.x(), ray.direction.y(), ray.direction.z());
     bvh::ray::Ray::new(origin, direction)
 }

@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 bvh = "0.3.2"
 clap = "2.33.3"
-crossbeam-channel = "0.5.0"
 fastrand = "1.4.0"
 nalgebra = "0.23.2"
 tobj = "2.0.3"
@@ -22,3 +21,11 @@ gl = "0.14"
 [target.'cfg(target_os = "macos")'.dependencies.sdl2]
 version = "0.36.0"
 features = ["bundled"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+
+[profile.dev]
+opt-level = 2

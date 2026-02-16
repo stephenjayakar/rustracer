@@ -117,9 +117,9 @@ pub struct GuiState {
     pub use_custom_settings: bool,
 
     // Camera info
-    pub camera_x: f64,
-    pub camera_y: f64,
-    pub camera_z: f64,
+    pub camera_x: f32,
+    pub camera_y: f32,
+    pub camera_z: f32,
 
     // UI state
     pub show_settings_panel: bool,
@@ -157,7 +157,7 @@ impl GuiState {
     }
 
     /// Update camera position display
-    pub fn update_camera(&mut self, x: f64, y: f64, z: f64) {
+    pub fn update_camera(&mut self, x: f32, y: f32, z: f32) {
         self.camera_x = x;
         self.camera_y = y;
         self.camera_z = z;

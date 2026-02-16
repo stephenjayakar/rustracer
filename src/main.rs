@@ -1,12 +1,4 @@
 #![allow(dead_code)]
-// Quick macro to print out comma separated values. Used for debugging.
-macro_rules! dp {
-	($x:expr) => { println!("{}: {}", stringify!($x), $x); };
-	($x:expr, $($y:expr),+) => {
-		print!("{}: {}, ", stringify!($x), $x);
-		dp!($($y),+);
-	};
-}
 use clap::{App, Arg};
 
 mod canvas;
@@ -20,7 +12,7 @@ use scene::{Point, Scene};
 
 const DEFAULT_SCREEN_WIDTH: u32 = 600;
 const DEFAULT_SCREEN_HEIGHT: u32 = 600;
-const DEFAULT_FOV_DEGREES: f64 = 90.0;
+const DEFAULT_FOV_DEGREES: f32 = 90.0;
 const DEFAULT_SAMPLES_PER_PIXEL: u32 = 4;
 const DEFAULT_LIGHT_SAMPLES: u32 = 4;
 const DEFAULT_MAX_BOUNCES: u32 = 50;
@@ -28,7 +20,7 @@ const DEFAULT_MAX_BOUNCES: u32 = 50;
 pub struct Config {
     screen_width: u32,
     screen_height: u32,
-    fov: f64,
+    fov: f32,
     origin: Point,
     samples_per_pixel: u32,
     light_samples: u32,
@@ -100,7 +92,7 @@ impl Config {
         Config {
             screen_width,
             screen_height,
-            fov: f64::to_radians(DEFAULT_FOV_DEGREES),
+            fov: f32::to_radians(DEFAULT_FOV_DEGREES),
             origin: Point::new(0.0, 0.0, 0.0),
             samples_per_pixel,
             light_samples,
@@ -117,6 +109,24 @@ fn main() {
     // parse args
     let config = Config::from_args();
 
-    let raytracer = Raytracer::new(config, Scene::new_dragon());
+    let scene_name = std::env::var("SCENE").unwrap_or_else(|_| "specular".to_string());
+    let load_start = std::time::Instant::now();
+    let scene = match scene_name.as_str() {
+        "dragon" => Scene::new_dragon(),
+        "teapot" => Scene::new_teapot(),
+        "specular" => Scene::new_specular(),
+        "diffuse" => Scene::new_diffuse(),
+        "triangle" => Scene::new_triangle(),
+        _ => {
+            eprintln!("Unknown scene '{}', using specular", scene_name);
+            Scene::new_specular()
+        }
+    };
+    println!(
+        "Scene '{}' loaded in {:.3}s",
+        scene_name,
+        load_start.elapsed().as_secs_f64()
+    );
+    let raytracer = Raytracer::new(config, scene);
     raytracer.start();
 }

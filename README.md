@@ -1,5 +1,7 @@
 # rustracer
 
+![gui](/screenshots/gui.png?raw=true)
+
 Screenshot | Table?
 ----------------------------------------:|:----------------------------
 ![dragon](/screenshots/dragon.png?raw=true "dragon") | ![specular](/screenshots/specular.png?raw=true "specular")

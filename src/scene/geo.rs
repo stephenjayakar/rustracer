@@ -1,13 +1,11 @@
 extern crate nalgebra as na;
 
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 use std::fmt;
 use std::ops::{Add, Mul, Sub};
 
-use na::base::{Matrix3, Vector3};
+use na::base::Vector3;
 use na::geometry::Point3;
-
-use crate::common::EPS;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Ray {
@@ -17,42 +15,55 @@ pub struct Ray {
 
 impl Ray {
     // normalizes the direction vector
+    #[inline(always)]
     pub fn new(origin: Point, direction: Vector) -> Ray {
         Ray {
             origin,
             direction: direction.normalized(),
         }
     }
+
+    /// Create a ray with an already-normalized direction (skip redundant normalize)
+    #[inline(always)]
+    pub fn new_prenormalized(origin: Point, direction: Vector) -> Ray {
+        Ray { origin, direction }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Point {
-    p: Point3<f64>,
+    p: Point3<f32>,
 }
 
 impl Point {
-    pub fn new(x: f64, y: f64, z: f64) -> Point {
-        let p = Point3::new(x, y, z);
-        Point::new_from_na(p)
+    #[inline(always)]
+    pub fn new(x: f32, y: f32, z: f32) -> Point {
+        Point {
+            p: Point3::new(x, y, z),
+        }
     }
 
     pub fn origin() -> Point {
         Point::new(0.0, 0.0, 0.0)
     }
 
-    fn new_from_na(p: Point3<f64>) -> Point {
+    #[inline(always)]
+    fn new_from_na(p: Point3<f32>) -> Point {
         Point { p }
     }
 
-    pub fn x(&self) -> f64 {
+    #[inline(always)]
+    pub fn x(&self) -> f32 {
         self.p[0]
     }
 
-    pub fn y(&self) -> f64 {
+    #[inline(always)]
+    pub fn y(&self) -> f32 {
         self.p[1]
     }
 
-    pub fn z(&self) -> f64 {
+    #[inline(always)]
+    pub fn z(&self) -> f32 {
         self.p[2]
     }
 }
@@ -65,105 +76,106 @@ impl fmt::Display for Point {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vector {
-    v: Vector3<f64>,
+    v: Vector3<f32>,
 }
 
 impl Vector {
-    pub fn new(x: f64, y: f64, z: f64) -> Vector {
-        let v = Vector3::new(x, y, z);
-        Vector::new_from_na(v)
+    #[inline(always)]
+    pub fn new(x: f32, y: f32, z: f32) -> Vector {
+        Vector {
+            v: Vector3::new(x, y, z),
+        }
     }
 
-    fn new_from_na(v: Vector3<f64>) -> Vector {
+    #[inline(always)]
+    fn new_from_na(v: Vector3<f32>) -> Vector {
         Vector { v }
     }
 
-    pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
+    #[inline(always)]
+    pub fn new_normalized(x: f32, y: f32, z: f32) -> Vector {
         Vector::new(x, y, z).normalized()
     }
 
-    /// Basically copied this from my 184 project, as the naive way that I was going
-    /// to implement was biased towards vectors going towards the normal.  Oops.
-    /// TODO: Figure out how this works.
+    /// Uniform hemisphere sampling (optimized: avoid acos, use sin_cos)
     pub fn random_hemisphere() -> Vector {
-        // creating a random vector in object space
-        let xi1 = fastrand::f64();
-        let xi2 = fastrand::f64();
+        let xi1 = fastrand::f32();
+        let xi2 = fastrand::f32();
 
-        let theta = f64::acos(xi1);
+        let cos_theta = xi1;
+        let sin_theta = f32::sqrt(1.0 - xi1 * xi1);
         let phi = 2.0 * PI * xi2;
-        let xs = f64::sin(theta) * f64::cos(phi);
-        let ys = f64::sin(theta) * f64::sin(phi);
-        let zs = f64::cos(theta);
+        let (sin_phi, cos_phi) = f32::sin_cos(phi);
+        let xs = sin_theta * cos_phi;
+        let ys = sin_theta * sin_phi;
+        let zs = cos_theta;
 
         Vector::new(xs, ys, zs)
     }
 
+    /// Transform local hemisphere sample to world space using an ONB built from normal.
+    /// Uses Frisvad's method - no normalize calls needed for the basis vectors.
     pub fn to_coord_space(&self, normal: Vector) -> Vector {
-        // make_coord_space from 184.  make it a function if we use it again
-        // TODO: unsure if these clones are necessary
-        // special handling if normal is (0, 1, 0), as cross products will be undefined.
-        // other behavior
-        let mut z = normal.v.clone();
-        let mut h = z.clone();
-        if f64::abs(h.x) <= f64::abs(h.y) && f64::abs(h.x) <= f64::abs(h.z) {
-            h.y = 1.0;
-            // TODO: Unsure about these.  meant to fix the cross multiplication issues.
-            h.x += EPS;
-            h.z += EPS;
+        let n = normal.v;
+        let (t, b) = if n.z < -0.9999999 {
+            // Handle singularity when normal points straight down
+            (Vector3::new(0.0, -1.0, 0.0), Vector3::new(-1.0, 0.0, 0.0))
         } else {
-            h.z = 1.0;
-            h.x += EPS;
-            h.y += EPS;
-        }
-
-        z = z.normalize();
-        let y = h.cross(&z).normalize();
-        let x = z.cross(&y).normalize();
-
-        let o2w = Matrix3::from_columns(&[x, y, z]);
-        Vector::new_from_na(o2w * self.v)
+            let a = 1.0 / (1.0 + n.z);
+            let b_val = -n.x * n.y * a;
+            (
+                Vector3::new(1.0 - n.x * n.x * a, b_val, -n.x),
+                Vector3::new(b_val, 1.0 - n.y * n.y * a, -n.y),
+            )
+        };
+        Vector::new_from_na(t * self.v.x + b * self.v.y + n * self.v.z)
     }
 
-    /// Samples uniformly on a unit sphere and returns the associated vector
+    /// Samples uniformly on a unit sphere
     pub fn random_sphere() -> Vector {
-        // TODO: figure out how to not repeat this for hemisphere
-        let xi1 = fastrand::f64();
-        let xi2 = fastrand::f64();
+        let xi1 = fastrand::f32();
+        let xi2 = fastrand::f32();
 
         let theta = 2.0 * PI * xi1;
-        let phi = f64::acos(1.0 - 2.0 * xi2);
-        let xs = f64::sin(phi) * f64::cos(theta);
-        let ys = f64::sin(phi) * f64::sin(theta);
-        let zs = f64::cos(phi);
+        let phi = f32::acos(1.0 - 2.0 * xi2);
+        let xs = f32::sin(phi) * f32::cos(theta);
+        let ys = f32::sin(phi) * f32::sin(theta);
+        let zs = f32::cos(phi);
         Vector::new(xs, ys, zs)
     }
 
-    pub fn norm(&self) -> f64 {
+    #[inline(always)]
+    pub fn norm(&self) -> f32 {
         self.v.norm()
     }
 
+    #[inline(always)]
     pub fn normalized(&self) -> Vector {
         Vector::new_from_na(self.v.normalize())
     }
 
-    pub fn dot(&self, other_vector: Vector) -> f64 {
+    #[inline(always)]
+    pub fn dot(&self, other_vector: Vector) -> f32 {
         self.v.dot(&other_vector.v)
     }
 
+    #[inline(always)]
     pub fn cross(&self, other_vector: Vector) -> Vector {
         Vector::new_from_na(self.v.cross(&other_vector.v))
     }
 
-    pub fn x(&self) -> f64 {
+    #[inline(always)]
+    pub fn x(&self) -> f32 {
         self.v[0]
     }
 
-    pub fn y(&self) -> f64 {
+    #[inline(always)]
+    pub fn y(&self) -> f32 {
         self.v[1]
     }
 
-    pub fn z(&self) -> f64 {
+    #[inline(always)]
+    pub fn z(&self) -> f32 {
         self.v[2]
     }
 }
@@ -176,7 +188,7 @@ impl fmt::Display for Vector {
 
 impl Sub for Point {
     type Output = Vector;
-
+    #[inline(always)]
     fn sub(self, other: Point) -> Self::Output {
         Vector::new_from_na(self.p - other.p)
     }
@@ -184,7 +196,7 @@ impl Sub for Point {
 
 impl Add<Vector> for Point {
     type Output = Point;
-
+    #[inline(always)]
     fn add(self, other: Vector) -> Self::Output {
         Point::new_from_na(self.p + other.v)
     }
@@ -192,7 +204,7 @@ impl Add<Vector> for Point {
 
 impl Sub<Vector> for Point {
     type Output = Point;
-
+    #[inline(always)]
     fn sub(self, other: Vector) -> Self::Output {
         Point::new_from_na(self.p - other.v)
     }
@@ -200,7 +212,7 @@ impl Sub<Vector> for Point {
 
 impl Add for Vector {
     type Output = Vector;
-
+    #[inline(always)]
     fn add(self, other: Vector) -> Self::Output {
         Vector::new_from_na(self.v + other.v)
     }
@@ -208,15 +220,16 @@ impl Add for Vector {
 
 impl Sub for Vector {
     type Output = Vector;
-
+    #[inline(always)]
     fn sub(self, other: Vector) -> Self::Output {
         Vector::new_from_na(self.v - other.v)
     }
 }
 
-impl Mul<f64> for Vector {
+impl Mul<f32> for Vector {
     type Output = Vector;
-    fn mul(self, other: f64) -> Vector {
+    #[inline(always)]
+    fn mul(self, other: f32) -> Vector {
         Vector::new_from_na(self.v * other)
     }
 }

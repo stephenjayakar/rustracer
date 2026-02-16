@@ -3,9 +3,6 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::video::GLProfile;
 
-extern crate crossbeam_channel;
-use crossbeam_channel::{unbounded, Receiver, Sender};
-
 extern crate png;
 
 use std::fs::File;
@@ -15,7 +12,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use crate::common::Spectrum;
 use crate::gui::{GuiAction, GuiState, SceneType};
 use crate::scene::Scene;
 
@@ -26,21 +22,15 @@ const REFRESH_RATE: u64 = 1000 / 60; // 60 FPS for smooth GUI
 /// Mostly contains concurrency primitives to properly wrap
 /// around SDL2 context.
 pub struct Canvas {
-    receiver: Receiver<DrawPixelMessage>,
-    sender: Sender<DrawPixelMessage>,
     width: u32,
     height: u32,
     high_dpi: bool,
-    image_mode: bool,
+    pub image_mode: bool,
 }
 
 impl Canvas {
-    /// Initializes the canvas with concurrency constructs.
     pub fn new(width: u32, height: u32, high_dpi: bool, image_mode: bool) -> Canvas {
-        let (s, r) = unbounded::<DrawPixelMessage>();
         Canvas {
-            sender: s,
-            receiver: r,
             width,
             height,
             high_dpi,
@@ -49,7 +39,6 @@ impl Canvas {
     }
 
     fn new_png_writer(&self) -> png::Writer<BufWriter<File>> {
-        // Ensure dump directory exists
         std::fs::create_dir_all("./dump").ok();
 
         let timestamp = SystemTime::now()
@@ -64,11 +53,9 @@ impl Canvas {
         let mut encoder = png::Encoder::new(w, self.width, self.height);
         encoder.set_color(png::ColorType::RGB);
         encoder.set_depth(png::BitDepth::Eight);
-        let writer = encoder.write_header().unwrap();
-        writer
+        encoder.write_header().unwrap()
     }
 
-    /// Saves the canvas to a png file.  The filename is the '{current UNIX timestamp}.png'.
     fn save_canvas(&self, pixel_buffer_rgb: &[u8]) {
         let mut writer = self.new_png_writer();
         writer
@@ -103,34 +90,27 @@ impl Canvas {
             inner: raytracer_inner,
         };
 
-        // Set to full rendering mode
         {
             let mut mode = raytracer.inner.rendering_mode.lock().unwrap();
             *mode = crate::raytracer::RenderingMode::Full;
         }
 
-        // Render synchronously
         println!("Rendering image...");
+        let start = std::time::Instant::now();
         raytracer.render(true);
+        let elapsed = start.elapsed();
+        println!("Render time: {:.3}s", elapsed.as_secs_f64());
 
-        // Collect all pixels
-        let mut pixel_buffer: Vec<u8> = vec![0; (self.width * self.height * 3) as usize];
-        for dpm in self.receiver.try_iter() {
-            let (x, y, s) = (dpm.x as usize, dpm.y as usize, dpm.s);
-            let index = (y * self.width as usize + x) * 3;
-            if index + 2 < pixel_buffer.len() {
-                pixel_buffer[index] = s.r();
-                pixel_buffer[index + 1] = s.g();
-                pixel_buffer[index + 2] = s.b();
-            }
-        }
-
-        self.save_canvas(&pixel_buffer);
+        // Snapshot the shared pixel buffer and save
+        let pixel_count = (self.width * self.height) as usize;
+        let mut rgba = vec![0u8; pixel_count * 4];
+        raytracer.inner.pixel_buffer.snapshot(&mut rgba);
+        let rgb = Self::rgba_to_rgb(&rgba, self.width, self.height);
+        self.save_canvas(&rgb);
     }
 
     /// Starts a new canvas context that takes over the main thread.
     pub fn start_gui(&self, raytracer_inner: Arc<crate::raytracer::RaytracerInner>) {
-        // Create a Raytracer from the inner reference
         let raytracer = crate::raytracer::Raytracer {
             inner: raytracer_inner,
         };
@@ -142,7 +122,6 @@ impl Canvas {
         let win_width = self.width / divider;
         let win_height = self.height / divider;
 
-        // Set up OpenGL attributes for egui
         let gl_attr = video_subsystem.gl_attr();
         gl_attr.set_context_profile(GLProfile::Core);
         gl_attr.set_context_version(3, 3);
@@ -157,16 +136,13 @@ impl Canvas {
             .build()
             .unwrap();
 
-        // Create OpenGL context
         let _gl_context = window.gl_create_context().unwrap();
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const _);
 
         // Initialize egui with correct Retina DPI scaling.
-        // On macOS Retina, drawable_size() is 2x window.size(). The painter needs the
-        // correct pixels_per_point for GL viewport and scissor calculations.
         let shader_ver = egui_sdl2_gl::ShaderVersion::Default;
         let (drawable_w, drawable_h) = window.drawable_size();
-        let dpi_scale = drawable_w as f32 / win_width as f32; // 2.0 on Retina, 1.0 otherwise
+        let dpi_scale = drawable_w as f32 / win_width as f32;
         let (mut egui_painter, mut egui_state) = egui_sdl2_gl::with_sdl2(
             &window,
             shader_ver,
@@ -174,66 +150,46 @@ impl Canvas {
         );
         let egui_ctx = egui::Context::default();
 
-        // The painter initialized with window.size() but needs drawable_size() for GL.
-        // After Custom(dpi_scale), pixels_per_point = dpi_scale, so updating with
-        // drawable_size gives screen_rect = drawable / dpi_scale = logical size. Correct.
         egui_painter.update_screen_rect((drawable_w, drawable_h));
         egui_state.input.screen_rect = Some(egui_painter.screen_rect);
 
-        // Set dark theme
         egui_ctx.set_visuals(egui::Visuals::dark());
 
-        // GUI state
         let mut gui_state = GuiState::new();
 
-        // Pixel buffer for the rendered image in RGBA format (required by egui painter)
-        let pixel_count = (self.width * self.height) as usize;
-        let mut pixel_buffer_rgba: Vec<u8> = vec![0; pixel_count * 4];
+        // Double-buffered pixel snapshot to avoid cloning the entire buffer every frame
+        let pixel_count = (self.width * self.height * 4) as usize;
+        let mut pixel_snapshot: Vec<u8> = vec![0; pixel_count];
 
         // Register the render texture with egui's painter
-        // This creates a texture that the painter manages internally
         let render_texture_id = egui_painter.new_user_texture_rgba8(
             (self.width as usize, self.height as usize),
-            pixel_buffer_rgba.clone(),
-            false, // nearest filtering for pixel-accurate rendering
+            pixel_snapshot.clone(),
+            false,
         );
 
-        // Flag to trigger a new debug render when something changes
         let mut needs_render = false;
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 
-        println!(
-            "DPI scale={}, window={}x{}, drawable={}x{}",
-            dpi_scale, win_width, win_height, drawable_w, drawable_h
-        );
         // canvas loop
         'running: loop {
-            // Drain all pending pixel messages into the buffer
-            let mut pixels_updated = false;
-            while let Ok(dpm) = self.receiver.try_recv() {
-                let (x, y, s) = (dpm.x as usize, dpm.y as usize, dpm.s);
-                let index = (y * self.width as usize + x) * 4;
-                if index + 3 < pixel_buffer_rgba.len() {
-                    pixel_buffer_rgba[index] = s.r();
-                    pixel_buffer_rgba[index + 1] = s.g();
-                    pixel_buffer_rgba[index + 2] = s.b();
-                    pixel_buffer_rgba[index + 3] = 255; // full alpha
-                    pixels_updated = true;
-                }
-            }
+            // Snapshot shared pixel buffer into our local copy (no channel, no clone)
+            // This is a fast memcpy-like operation reading from AtomicU8s
+            raytracer.inner.pixel_buffer.snapshot(&mut pixel_snapshot);
 
-            // Update the egui-managed texture if pixels changed
-            if pixels_updated {
-                egui_painter
-                    .update_user_texture_rgba8_data(render_texture_id, pixel_buffer_rgba.clone());
-            }
+            // Update the egui texture with the snapshot data
+            // This avoids cloning - we pass the data directly
+            egui_painter.update_user_texture_rgba8_data(
+                render_texture_id,
+                pixel_snapshot.clone(), // TODO: egui_sdl2_gl API requires owned Vec, unavoidable
+            );
 
             // Re-render in debug mode when flagged and not already rendering
             let is_currently_rendering = raytracer
                 .inner
                 .is_rendering
-                .load(std::sync::atomic::Ordering::SeqCst);
+                .load(std::sync::atomic::Ordering::Relaxed);
             if needs_render && !is_currently_rendering {
                 let current_mode = *raytracer.inner.rendering_mode.lock().unwrap();
                 if current_mode == crate::raytracer::RenderingMode::Debug {
@@ -251,16 +207,15 @@ impl Canvas {
                 gui_state.is_rendering = raytracer
                     .inner
                     .is_rendering
-                    .load(std::sync::atomic::Ordering::SeqCst);
+                    .load(std::sync::atomic::Ordering::Relaxed);
                 gui_state.render_progress = raytracer
                     .inner
                     .render_progress
-                    .load(std::sync::atomic::Ordering::SeqCst)
+                    .load(std::sync::atomic::Ordering::Relaxed)
                     as f32
                     / 100.0;
             }
 
-            // Set egui input time
             egui_state.input.time = Some(
                 SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -268,10 +223,7 @@ impl Canvas {
                     .as_secs_f64(),
             );
 
-            // Collect events first, then process
             let events: Vec<Event> = event_pump.poll_iter().collect();
-
-            // Check if egui wants keyboard input (e.g. a text field is focused)
             let egui_wants_keyboard = egui_ctx.wants_keyboard_input();
 
             for event in events {
@@ -283,12 +235,10 @@ impl Canvas {
                         ..
                     } => break 'running,
 
-                    // Only handle camera/app shortcuts if egui doesn't want keyboard input
                     Event::KeyDown {
                         keycode: Some(keycode),
                         ..
                     } if !egui_wants_keyboard => match keycode {
-                        // Camera movement with WASD
                         Keycode::W => {
                             raytracer.interrupt_render();
                             raytracer.move_camera(crate::scene::Vector::new(0.0, 0.0, -1.0));
@@ -320,13 +270,11 @@ impl Canvas {
                             needs_render = true;
                         }
 
-                        // Toggle rendering mode with R
                         Keycode::R => {
                             raytracer.toggle_rendering_mode();
                             needs_render = true;
                         }
 
-                        // Start full render with F
                         Keycode::F => {
                             {
                                 let mut mode = raytracer.inner.rendering_mode.lock().unwrap();
@@ -340,7 +288,6 @@ impl Canvas {
                             raytracer.render(false);
                         }
 
-                        // Toggle continuous rendering with C
                         Keycode::C => {
                             gui_state.continuous_rendering = !gui_state.continuous_rendering;
                             println!(
@@ -353,7 +300,6 @@ impl Canvas {
                             );
                         }
 
-                        // Pass unhandled keys to egui
                         _ => {
                             egui_state.process_input(
                                 &window,
@@ -371,10 +317,6 @@ impl Canvas {
                     },
 
                     // Handle mouse events ourselves to fix Retina coordinate scaling.
-                    // SDL2 reports mouse coords in logical (window) pixels, which already
-                    // match our egui screen_rect. But egui_sdl2_gl's process_input divides
-                    // by pixels_per_point (2.0 on Retina), halving the coords. We bypass
-                    // that by injecting mouse events directly into egui's input.
                     Event::MouseMotion { x, y, .. } => {
                         egui_state.pointer_pos = egui::pos2(x as f32, y as f32);
                         egui_state
@@ -415,20 +357,17 @@ impl Canvas {
                         }
                     }
 
-                    // Pass all other events to egui
                     _ => {
                         egui_state.process_input(&window, event, &mut egui_painter);
                     }
                 }
             }
 
-            // Single egui frame: render background image + GUI overlay together
+            // Single egui frame
             egui_ctx.begin_frame(egui_state.input.take());
 
-            // Draw GUI panels (side panel, top bar)
             let gui_action = gui_state.render(&egui_ctx);
 
-            // Draw the rendered image in the remaining central area
             egui::CentralPanel::default()
                 .frame(egui::Frame::none().fill(egui::Color32::BLACK))
                 .show(&egui_ctx, |ui| {
@@ -447,7 +386,6 @@ impl Canvas {
                 viewport_output: _,
             } = egui_ctx.end_frame();
 
-            // Handle egui platform output (clipboard, cursor, etc.)
             egui_state.process_output(&window, &platform_output);
 
             // Handle GUI actions
@@ -462,17 +400,7 @@ impl Canvas {
                         SceneType::Triangle => Scene::new_triangle(),
                     };
                     raytracer.set_scene(new_scene);
-                    // Clear the pixel buffer
-                    for chunk in pixel_buffer_rgba.chunks_exact_mut(4) {
-                        chunk[0] = 0;
-                        chunk[1] = 0;
-                        chunk[2] = 0;
-                        chunk[3] = 255;
-                    }
-                    egui_painter.update_user_texture_rgba8_data(
-                        render_texture_id,
-                        pixel_buffer_rgba.clone(),
-                    );
+                    raytracer.inner.pixel_buffer.clear();
                     needs_render = true;
                 }
                 GuiAction::StartFullRender => {
@@ -495,7 +423,7 @@ impl Canvas {
                     needs_render = true;
                 }
                 GuiAction::SaveImage => {
-                    let rgb_data = Self::rgba_to_rgb(&pixel_buffer_rgba, self.width, self.height);
+                    let rgb_data = Self::rgba_to_rgb(&pixel_snapshot, self.width, self.height);
                     self.save_canvas(&rgb_data);
                 }
                 GuiAction::ResetCamera => {
@@ -512,27 +440,11 @@ impl Canvas {
                 GuiAction::None => {}
             }
 
-            // Paint everything in one pass
             let paint_jobs = egui_ctx.tessellate(shapes, pixels_per_point);
-
             egui_painter.paint_jobs(None, textures_delta, paint_jobs);
 
             window.gl_swap_window();
             thread::sleep(Duration::from_millis(REFRESH_RATE));
         }
     }
-
-    pub fn draw_pixel(&self, x: u32, y: u32, s: Spectrum) -> bool {
-        if x >= self.width || y >= self.height {
-            return false;
-        }
-        self.sender.send(DrawPixelMessage { x, y, s }).unwrap();
-        return true;
-    }
-}
-
-struct DrawPixelMessage {
-    x: u32,
-    y: u32,
-    s: Spectrum,
 }

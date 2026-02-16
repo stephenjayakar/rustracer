@@ -1,7 +1,7 @@
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 use super::super::common::{Spectrum, EPS};
 use super::{Point, Ray, Vector};
@@ -20,8 +20,9 @@ pub struct Material {
 }
 
 pub struct LightSample {
-    pub pdf: f64,
+    pub pdf: f32,
     pub wi: Vector,
+    pub distance: f32,
 }
 
 pub enum Object {
@@ -31,7 +32,8 @@ pub enum Object {
 
 impl Object {
     /// Returns distance if intersection occurs.
-    pub fn intersect(&self, ray: &Ray) -> Option<f64> {
+    #[inline(always)]
+    pub fn intersect(&self, ray: &Ray) -> Option<f32> {
         match self {
             Object::Triangle(triangle) => {
                 let (p1, p2, p3) = (triangle.p1, triangle.p2, triangle.p3);
@@ -47,17 +49,11 @@ impl Object {
                     s1.dot(s) * scalar,
                     s2.dot(direction) * scalar,
                 );
-                return if b1 < 0.0
-                    || b2 < 0.0
-                    || b1 > 1.0
-                    || b2 > 1.0
-                    || b1 + b2 > 1.0 + EPS
-                    || t < EPS
-                {
+                if b1 < 0.0 || b2 < 0.0 || b1 > 1.0 || b2 > 1.0 || b1 + b2 > 1.0 + EPS || t < EPS {
                     None
                 } else {
                     Some(t)
-                };
+                }
             }
             Object::Sphere(sphere) => {
                 let l: Vector = sphere.center - ray.origin;
@@ -81,6 +77,7 @@ impl Object {
         }
     }
 
+    #[inline(always)]
     pub fn surface_normal(&self, point: Point) -> Vector {
         match self {
             Object::Triangle(triangle) => triangle.surface_normal(point),
@@ -88,6 +85,7 @@ impl Object {
         }
     }
 
+    #[inline(always)]
     pub fn material(&self) -> &Material {
         match self {
             Object::Triangle(triangle) => &triangle.material,
@@ -104,18 +102,23 @@ impl Object {
                 let p = intersection_point;
                 let s = sphere.random_point();
                 let ps = s - p;
-                let wi = ps.normalized();
-                let d_c = (sphere.center - p).norm();
                 let d_s = ps.norm();
-                let cos_a = (d_c.powi(2) + sphere.radius.powi(2) - d_s.powi(2))
+                let wi = ps * (1.0 / d_s); // normalize without extra sqrt
+                let d_c = (sphere.center - p).norm();
+                let cos_a = (d_c * d_c + sphere.radius * sphere.radius - d_s * d_s)
                     / (2.0 * d_c * sphere.radius);
                 let pdf = 2.0 * PI * (1.0 - cos_a);
-                LightSample { pdf, wi }
+                LightSample {
+                    pdf,
+                    wi,
+                    distance: d_s,
+                }
             }
         }
     }
 
-    pub fn bsdf(&self, wi: Vector, wo: Vector) -> Spectrum {
+    #[inline(always)]
+    pub fn bsdf(&self, _wi: Vector, _wo: Vector) -> Spectrum {
         let material = self.material();
         match material.bsdf {
             BSDF::Diffuse => material.reflectance * (1.0 / PI),
@@ -134,11 +137,9 @@ impl Object {
                 BSDFSample { wi, pdf, reflected }
             }
             BSDF::Specular => {
-                // a reflection is a rotation 180deg around the z axis,
-                // and then you flip the direction.
                 let wi = wo - normal * 2.0 * wo.dot(normal);
                 let pdf = 1.0;
-                let cos_theta = f64::abs(wi.dot(normal));
+                let cos_theta = f32::abs(wi.dot(normal));
                 // undoing the cos theta multiplication in the raytracer
                 let reflected = material.reflectance * (1.0 / cos_theta);
                 BSDFSample { wi, pdf, reflected }
@@ -176,7 +177,7 @@ impl BHShape for Object {
 
 pub struct Sphere {
     center: Point,
-    radius: f64,
+    radius: f32,
     material: Material,
     node_index: usize,
 }
@@ -195,7 +196,7 @@ pub struct Triangle {
 
 pub struct BSDFSample {
     pub wi: Vector,
-    pub pdf: f64,
+    pub pdf: f32,
     pub reflected: Spectrum,
 }
 
@@ -210,7 +211,7 @@ impl Material {
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f64, material: Material) -> Sphere {
+    pub fn new(center: Point, radius: f32, material: Material) -> Sphere {
         Sphere {
             center,
             radius,
@@ -221,8 +222,7 @@ impl Sphere {
 
     fn random_point(&self) -> Point {
         let random_vector = Vector::random_sphere();
-        let point = self.center.clone();
-        point + (random_vector * self.radius)
+        self.center + (random_vector * self.radius)
     }
 
     fn surface_normal(&self, point: Point) -> Vector {
@@ -231,9 +231,9 @@ impl Sphere {
 }
 
 struct BarycentricCoordinates {
-    u: f64,
-    v: f64,
-    w: f64,
+    u: f32,
+    v: f32,
+    w: f32,
 }
 
 impl Triangle {
@@ -266,8 +266,8 @@ impl Triangle {
         Triangle::new(p1, p2, p3, normal, normal, normal, material)
     }
 
+    #[inline(always)]
     fn barycentric_coordinates(&self, p: Point) -> BarycentricCoordinates {
-        // https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
         let v0 = self.p2 - self.p1;
         let v1 = self.p3 - self.p1;
         let v2 = p - self.p1;
@@ -286,9 +286,7 @@ impl Triangle {
 
     fn surface_normal(&self, point: Point) -> Vector {
         let b = self.barycentric_coordinates(point);
-        let (u, v, w) = (b.u, b.v, b.w);
-        let normal = self.vn1 * u + self.vn2 * v + self.vn3 * w;
-        normal
+        self.vn1 * b.u + self.vn2 * b.v + self.vn3 * b.w
     }
 }
 
@@ -297,22 +295,18 @@ impl Bounded for Sphere {
         let half_size = Vector::new(self.radius, self.radius, self.radius);
         let min = self.center - half_size;
         let max = self.center + half_size;
-
-        // RIP IN PEACE
-        let min = point_to_bvh_point(min);
-        let max = point_to_bvh_point(max);
-        AABB::with_bounds(min, max)
+        AABB::with_bounds(point_to_bvh_point(min), point_to_bvh_point(max))
     }
 }
 
 impl Bounded for Triangle {
     fn aabb(&self) -> AABB {
-        let min_x = f64::min(f64::min(self.p1.x(), self.p2.x()), self.p3.x());
-        let min_y = f64::min(f64::min(self.p1.y(), self.p2.y()), self.p3.y());
-        let min_z = f64::min(f64::min(self.p1.z(), self.p2.z()), self.p3.z());
-        let max_x = f64::max(f64::max(self.p1.x(), self.p2.x()), self.p3.x());
-        let max_y = f64::max(f64::max(self.p1.y(), self.p2.y()), self.p3.y());
-        let max_z = f64::max(f64::max(self.p1.z(), self.p2.z()), self.p3.z());
+        let min_x = f32::min(f32::min(self.p1.x(), self.p2.x()), self.p3.x());
+        let min_y = f32::min(f32::min(self.p1.y(), self.p2.y()), self.p3.y());
+        let min_z = f32::min(f32::min(self.p1.z(), self.p2.z()), self.p3.z());
+        let max_x = f32::max(f32::max(self.p1.x(), self.p2.x()), self.p3.x());
+        let max_y = f32::max(f32::max(self.p1.y(), self.p2.y()), self.p3.y());
+        let max_z = f32::max(f32::max(self.p1.z(), self.p2.z()), self.p3.z());
 
         let min = Point::new(min_x, min_y, min_z);
         let max = Point::new(max_x, max_y, max_z);
@@ -321,8 +315,9 @@ impl Bounded for Triangle {
     }
 }
 
+#[inline(always)]
 fn point_to_bvh_point(p: Point) -> bvh::nalgebra::Point3<f32> {
-    bvh::nalgebra::Point3::new(p.x() as f32, p.y() as f32, p.z() as f32)
+    bvh::nalgebra::Point3::new(p.x(), p.y(), p.z())
 }
 
 #[cfg(test)]
@@ -343,7 +338,7 @@ mod tests {
             material,
         );
 
-        let ipoint = Point::new(4.173316472713594, 3.2582371132481547, -19.999999903330043);
+        let ipoint = Point::new(4.173316, 3.258237, -20.0);
         triangle.surface_normal(ipoint);
     }
 }
